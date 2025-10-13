@@ -1,0 +1,22 @@
+{
+  "name": "dprod",
+  "version": "0.1.0",
+  "description": "Zero-configuration deployment platform",
+  "private": true,
+  "workspaces": [
+    "packages/cli",
+    "packages/frontend"
+  ],
+  "scripts": {
+    "dev": "docker-compose up --build",
+    "dev:api": "cd packages/api && python -m uvicorn src.main:app --reload --host 0.0.0.0 --port 8000",
+    "dev:cli": "cd packages/cli && npm run dev",
+    "dev:frontend": "cd packages/frontend && npm run dev",
+    "test": "pytest",
+    "lint": "black . && isort . && flake8 .",
+    "setup": "./scripts/setup-dev.sh"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

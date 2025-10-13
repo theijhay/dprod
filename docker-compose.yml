@@ -1,0 +1,90 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: dprod-postgres
+    environment:
+      POSTGRES_DB: dprod
+      POSTGRES_USER: dprod
+      POSTGRES_PASSWORD: dprod
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dprod -d dprod"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: dprod-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: packages/api/Dockerfile
+    container_name: dprod-api
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://dprod:dprod@postgres:5432/dprod
+      - REDIS_URL=redis://redis:6379
+      - DEBUG=true
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./packages:/app/packages
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: ["python", "-m", "uvicorn", "packages.api.src.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+  cli:
+    build:
+      context: .
+      dockerfile: packages/cli/Dockerfile
+    container_name: dprod-cli
+    volumes:
+      - ./packages:/app/packages
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - API_URL=http://api:8000
+    depends_on:
+      - api
+    command: ["tail", "-f", "/dev/null"]  # Keep container running
+
+  frontend:
+    build:
+      context: .
+      dockerfile: packages/frontend/Dockerfile
+    container_name: dprod-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    depends_on:
+      - api
+    volumes:
+      - ./packages:/app/packages
+    command: ["npm", "run", "dev"]
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  default:
+    name: dprod-network
