@@ -34,7 +34,7 @@ services:
   api:
     build:
       context: .
-      dockerfile: packages/api/Dockerfile
+      dockerfile: services/api/Dockerfile
     container_name: dprod-api
     ports:
       - "8000:8000"
@@ -48,17 +48,17 @@ services:
       redis:
         condition: service_healthy
     volumes:
-      - ./packages:/app/packages
+      - ./services:/app/services
       - /var/run/docker.sock:/var/run/docker.sock
-    command: ["python", "-m", "uvicorn", "packages.api.src.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    command: ["python", "-m", "uvicorn", "services.api.core.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
 
   cli:
     build:
       context: .
-      dockerfile: packages/cli/Dockerfile
+      dockerfile: tools/cli/Dockerfile
     container_name: dprod-cli
     volumes:
-      - ./packages:/app/packages
+      - ./tools:/app/tools
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - API_URL=http://api:8000
@@ -69,7 +69,7 @@ services:
   frontend:
     build:
       context: .
-      dockerfile: packages/frontend/Dockerfile
+      dockerfile: tools/frontend/Dockerfile
     container_name: dprod-frontend
     ports:
       - "3000:3000"
@@ -78,7 +78,7 @@ services:
     depends_on:
       - api
     volumes:
-      - ./packages:/app/packages
+      - ./tools:/app/tools
     command: ["npm", "run", "dev"]
 
 volumes:

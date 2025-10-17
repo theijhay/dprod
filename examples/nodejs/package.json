@@ -1,0 +1,13 @@
+{
+  "name": "dprod-nodejs-example",
+  "version": "1.0.0",
+  "description": "Example Node.js project for Dprod",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node index.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}

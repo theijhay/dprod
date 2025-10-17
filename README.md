@@ -81,8 +81,8 @@ Dprod uses a two-layer architecture:
    poetry install
    
    # Node.js dependencies
-   cd packages/cli && npm install
-   cd packages/frontend && npm install
+   cd tools/cli && npm install
+   cd tools/frontend && npm install
    ```
 
 2. **Start services**
@@ -101,14 +101,16 @@ Dprod uses a two-layer architecture:
 
 ```
 dprod/
-├── packages/                    # Monorepo packages
+├── services/                   # Backend services
 │   ├── api/                    # FastAPI backend service
 │   ├── orchestrator/           # Deployment orchestration service
-│   ├── detection-engine/       # Project detection service
-│   ├── cli/                    # Node.js CLI tool
-│   ├── frontend/               # Next.js web dashboard
+│   ├── detector/               # Project detection service
 │   └── shared/                 # Shared types & utilities
+├── tools/                      # Development tools
+│   ├── cli/                    # Node.js CLI tool
+│   └── frontend/               # Next.js web dashboard
 ├── infrastructure/             # Infrastructure as Code
+├── examples/                   # Example projects for testing
 ├── docs/                       # Documentation
 ├── tests/                      # Integration tests
 └── scripts/                    # Development scripts

@@ -49,8 +49,8 @@ fi
 
 # Install Node.js dependencies for CLI
 echo "📦 Installing Node.js dependencies..."
-if [ -d "packages/cli" ]; then
-    cd packages/cli
+if [ -d "tools/cli" ]; then
+    cd tools/cli
     if [ -f "package.json" ]; then
         npm install
     fi
@@ -58,8 +58,8 @@ if [ -d "packages/cli" ]; then
 fi
 
 # Install Node.js dependencies for Frontend
-if [ -d "packages/frontend" ]; then
-    cd packages/frontend
+if [ -d "tools/frontend" ]; then
+    cd tools/frontend
     if [ -f "package.json" ]; then
         npm install
     fi

@@ -14,15 +14,15 @@ dev: ## Start development environment
 
 dev-api: ## Start API server only
 	@echo "Starting API server..."
-	@cd packages/api && python -m uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
+	@cd services/api && python -m uvicorn core.main:app --reload --host 0.0.0.0 --port 8000
 
 dev-cli: ## Start CLI development
 	@echo "Starting CLI development..."
-	@cd packages/cli && npm run dev
+	@cd tools/cli && npm run dev
 
 dev-frontend: ## Start frontend development
 	@echo "Starting frontend development..."
-	@cd packages/frontend && npm run dev
+	@cd tools/frontend && npm run dev
 
 test: ## Run all tests
 	@echo "Running tests..."
@@ -30,11 +30,11 @@ test: ## Run all tests
 
 test-api: ## Run API tests
 	@echo "Running API tests..."
-	@cd packages/api && pytest
+	@cd services/api && pytest
 
 test-cli: ## Run CLI tests
 	@echo "Running CLI tests..."
-	@cd packages/cli && npm test
+	@cd tools/cli && npm test
 
 lint: ## Run linting
 	@echo "Running linting..."
@@ -49,12 +49,12 @@ clean: ## Clean up development environment
 
 build: ## Build all packages
 	@echo "Building all packages..."
-	@cd packages/api && python -m build
-	@cd packages/cli && npm run build
-	@cd packages/frontend && npm run build
+	@cd services/api && python -m build
+	@cd tools/cli && npm run build
+	@cd tools/frontend && npm run build
 
 install: ## Install all dependencies
 	@echo "Installing dependencies..."
 	@poetry install
-	@cd packages/cli && npm install
-	@cd packages/frontend && npm install
+	@cd tools/cli && npm install
+	@cd tools/frontend && npm install

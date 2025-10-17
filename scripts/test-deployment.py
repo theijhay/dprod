@@ -7,13 +7,13 @@ import tarfile
 import io
 from pathlib import Path
 
-# Add packages to path
+# Add services to path
 import sys
-sys.path.append('/app/packages')
+sys.path.append('services')
 
-from shared.src.models import Project, ProjectType
-from detection_engine.src.detector import ProjectDetector
-from orchestrator.src.deployment_manager import DeploymentManager
+from shared.core.models import Project, ProjectType
+from detector.core.detector import ProjectDetector
+from orchestrator.core.deployment_manager import DeploymentManager
 
 
 async def test_detection_engine():

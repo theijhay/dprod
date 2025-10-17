@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dprod Static Example</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 40px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+        h1 { color: #fff; }
+        .status { color: #4ade80; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Hello from Dprod!</h1>
+        <p>This is a static website deployed with Dprod.</p>
+        <p class="status">✅ Status: Healthy</p>
+        <p>Service: Static Site Example</p>
+        <p>Timestamp: <span id="timestamp"></span></p>
+    </div>
+    
+    <script>
+        document.getElementById('timestamp').textContent = new Date().toISOString();
+    </script>
+</body>
+</html>
