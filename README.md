@@ -30,18 +30,24 @@ dprod deploy
 
 ## 🏗️ Architecture
 
-Dprod uses a two-layer architecture:
+Dprod is a comprehensive deployment platform with the following components:
 
-1. **Your Dprod Platform** (The product you're building)
-   - API Server (handles requests)
-   - Detection Engine (analyzes projects)
-   - Orchestrator (manages deployments)
-   - Database (stores user data)
-   - Reverse Proxy (routes traffic)
+### Core Services
+- **API Server** (FastAPI) - Central hub for authentication, project management, and deployment orchestration
+- **Detection Engine** (Python) - Automatically detects project types and generates configurations
+- **Orchestrator Service** (Python) - Manages Docker containers and deployment lifecycle
+- **Reverse Proxy** (Traefik) - Routes traffic to deployed applications with SSL
+- **Database** (PostgreSQL) - Stores user data, projects, and deployment history
+- **Cache** (Redis) - High-performance caching and session management
+- **File Storage** - Stores project source code and build artifacts
 
-2. **Your Cloud Infrastructure** (Where you deploy the platform)
-   - Your servers running the Dprod platform
-   - Users deploy their apps TO your platform
+### User Interfaces
+- **CLI Tool** (Node.js) - Command-line interface for developers
+- **Web Dashboard** (React) - Web-based management interface
+- **API Gateway** (Future) - External API access for integrations
+
+### Deployment Layer
+- **User Applications** - Docker containers running user projects with automatic subdomain routing
 
 ## 🚀 Quick Start
 
@@ -174,10 +180,7 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 
 ## 📚 Documentation
 
-- [Project Overview](docs/project.md)
-- [Product Requirements](docs/PRD.md)
-- [Development Plan](docs/plan.md)
-- [CLI Commands](docs/command-building.md)
+- [Complete Documentation](DOCS.md) - Comprehensive guide covering architecture, development, API reference, and more
 
 ## 🤝 Contributing
 
@@ -193,7 +196,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🆘 Support
 
-- 📖 [Documentation](docs/)
+- 📖 [Complete Documentation](DOCS.md)
 - 🐛 [Issue Tracker](https://github.com/your-org/dprod/issues)
 - 💬 [Discussions](https://github.com/your-org/dprod/discussions)
 
