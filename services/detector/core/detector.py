@@ -1,12 +1,10 @@
-"""Main project detector that orchestrates all detection logic."""
+"""Main project detector that identifies project types and generates configurations."""
 
 import os
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Dict, Any
 
-from dprod_shared.models import ProjectConfig, ProjectType
-from dprod_shared.exceptions import ProjectDetectionError
-
+from services.shared.core.models import ProjectType, ProjectConfig
 from .detectors import (
     NodeJSDetector,
     PythonDetector,
@@ -17,7 +15,7 @@ from .detectors import (
 
 
 class ProjectDetector:
-    """Main project detector that determines project type and configuration."""
+    """Main project detector that orchestrates all detection logic."""
     
     def __init__(self):
         """Initialize the detector with all available detectors."""
@@ -26,43 +24,50 @@ class ProjectDetector:
             PythonDetector(),
             GoDetector(),
             StaticDetector(),
+            GenericDetector()
         ]
-        self.generic_detector = GenericDetector()
     
-    def detect(self, project_path: Path) -> ProjectConfig:
+    def detect_project(self, project_path: Path) -> Optional[ProjectConfig]:
         """
-        Detect project type and return configuration.
+        Detect project type and generate configuration.
         
         Args:
             project_path: Path to the project directory
             
         Returns:
-            ProjectConfig: Detected project configuration
-            
-        Raises:
-            ProjectDetectionError: If project type cannot be determined
+            ProjectConfig if detection successful, None otherwise
         """
-        if not project_path.exists():
-            raise ProjectDetectionError(f"Project path does not exist: {project_path}")
+        if not project_path.exists() or not project_path.is_dir():
+            return None
         
-        if not project_path.is_dir():
-            raise ProjectDetectionError(f"Project path is not a directory: {project_path}")
+        print(f"🔍 Analyzing project at: {project_path}")
         
-        # Try each detector in order
         for detector in self.detectors:
             if detector.can_handle(project_path):
-                try:
-                    config = detector.get_config(project_path)
-                    print(f"✅ Detected {config.type} project")
-                    return config
-                except Exception as e:
-                    print(f"⚠️  Detector {detector.__class__.__name__} failed: {e}")
-                    continue
+                print(f"✅ Detected {detector.project_type.value} project")
+                config = detector.get_config(project_path)
+                print(f"📋 Generated config: {config}")
+                return config
         
-        # Fallback to generic detector
-        print("⚠️  No specific detector matched, using generic detector")
-        return self.generic_detector.get_config(project_path)
+        print("❌ Could not detect project type")
+        return None
     
-    def get_supported_types(self) -> list[str]:
-        """Get list of supported project types."""
-        return [detector.project_type for detector in self.detectors]
+    def get_dockerfile(self, project_path: Path) -> Optional[str]:
+        """
+        Generate Dockerfile for the project.
+        
+        Args:
+            project_path: Path to the project directory
+            
+        Returns:
+            Dockerfile content as string, None if not supported
+        """
+        config = self.detect_project(project_path)
+        if not config:
+            return None
+        
+        for detector in self.detectors:
+            if detector.project_type == config.type:
+                return detector.generate_dockerfile(config)
+        
+        return None

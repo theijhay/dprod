@@ -1,10 +1,9 @@
 """Static site detector."""
 
 from pathlib import Path
-from typing import Optional
 
-from dprod_shared.models import ProjectConfig, ProjectType
 from .base import BaseDetector
+from services.shared.core.models import ProjectType, ProjectConfig
 
 
 class StaticDetector(BaseDetector):
@@ -14,91 +13,57 @@ class StaticDetector(BaseDetector):
         super().__init__(ProjectType.STATIC)
     
     def can_handle(self, project_path: Path) -> bool:
-        """Check if this is a static website."""
-        # Check for common static site files
-        static_indicators = [
+        """Check if this is a static site."""
+        # Look for common static site files
+        static_files = [
             "index.html",
             "index.htm",
-            "index.php",  # PHP static sites
             "public/index.html",
             "dist/index.html",
             "build/index.html"
         ]
         
-        for indicator in static_indicators:
-            if self._find_file(project_path, indicator):
-                return True
-        
-        return False
+        return any((project_path / file).exists() for file in static_files)
     
     def get_config(self, project_path: Path) -> ProjectConfig:
-        """Get static site configuration."""
-        # Determine if we need a build step
-        build_command = self._get_build_command(project_path)
+        """Generate configuration for static site."""
+        # Find the static files directory
+        static_dirs = ["public", "dist", "build", "."]
+        static_dir = "."
         
-        # Determine start command
-        start_command = self._get_start_command(project_path)
-        
-        # Determine port
-        port = self._get_port()
-        
-        # Get environment variables
-        environment = self._get_environment()
+        for dir_name in static_dirs:
+            if (project_path / dir_name / "index.html").exists():
+                static_dir = dir_name
+                break
         
         return ProjectConfig(
             type=ProjectType.STATIC,
-            build_command=build_command,
-            start_command=start_command,
-            port=port,
-            environment=environment
+            build_command="",  # No build needed for static sites
+            start_command=f"nginx -g 'daemon off;'",
+            port=80,
+            environment={},
+            install_path="/usr/share/nginx/html"
         )
     
-    def _get_build_command(self, project_path: Path) -> Optional[str]:
-        """Determine if a build step is needed."""
-        # Check for package.json (React, Vue, Angular, etc.)
-        if self._find_file(project_path, "package.json"):
-            package_data = self._read_json_file(project_path / "package.json")
-            scripts = package_data.get("scripts", {})
-            
-            # Check for build scripts
-            if "build" in scripts:
-                return "npm run build"
-            elif "build:prod" in scripts:
-                return "npm run build:prod"
-        
-        # Check for other build tools
-        if self._find_file(project_path, "webpack.config.js"):
-            return "npm run build"
-        elif self._find_file(project_path, "vite.config.js"):
-            return "npm run build"
-        elif self._find_file(project_path, "next.config.js"):
-            return "npm run build"
-        
-        # No build step needed
-        return None
-    
-    def _get_start_command(self, project_path: Path) -> str:
-        """Determine the start command."""
-        # Check if there's a dist or build directory
-        dist_dir = project_path / "dist"
-        build_dir = project_path / "build"
-        public_dir = project_path / "public"
-        
-        if dist_dir.exists():
-            return "npx serve -s dist -l 80"
-        elif build_dir.exists():
-            return "npx serve -s build -l 80"
-        elif public_dir.exists():
-            return "npx serve -s public -l 80"
-        else:
-            return "npx serve -s . -l 80"
-    
-    def _get_port(self) -> int:
-        """Get the port for static sites."""
-        return 80
-    
-    def _get_environment(self) -> dict:
-        """Get environment variables for static sites."""
-        return {
-            "NODE_ENV": "production"
-        }
+    def generate_dockerfile(self, config: ProjectConfig) -> str:
+        """Generate custom Dockerfile for static sites."""
+        return f"""FROM nginx:alpine
+
+# Copy static files
+COPY . /usr/share/nginx/html
+
+# Copy nginx configuration
+RUN echo 'server {{' > /etc/nginx/conf.d/default.conf && \\
+    echo '    listen 80;' >> /etc/nginx/conf.d/default.conf && \\
+    echo '    server_name localhost;' >> /etc/nginx/conf.d/default.conf && \\
+    echo '    root /usr/share/nginx/html;' >> /etc/nginx/conf.d/default.conf && \\
+    echo '    index index.html index.htm;' >> /etc/nginx/conf.d/default.conf && \\
+    echo '    location / {{' >> /etc/nginx/conf.d/default.conf && \\
+    echo '        try_files $uri $uri/ /index.html;' >> /etc/nginx/conf.d/default.conf && \\
+    echo '    }}' >> /etc/nginx/conf.d/default.conf && \\
+    echo '}}' >> /etc/nginx/conf.d/default.conf
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]
+"""

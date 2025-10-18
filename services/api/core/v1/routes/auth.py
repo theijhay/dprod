@@ -6,10 +6,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from ...db.database import get_db
-from ...auth.jwt_handler import create_access_token, verify_token
-from ...auth.password_handler import hash_password, verify_password
-from dprod_shared.models import User, UserCreate, UserResponse
-from dprod_shared.exceptions import AuthenticationError
+from ...v1.auth.jwt_handler import create_access_token, verify_token
+from ...v1.auth.password_handler import hash_password, verify_password
+from services.shared.core.models import User, UserCreate, UserResponse
+from services.shared.core.exceptions import AuthenticationError
 
 router = APIRouter()
 security = HTTPBearer()

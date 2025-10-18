@@ -4,14 +4,15 @@ import asyncio
 from pathlib import Path
 from typing import Dict, Any
 
-from dprod_shared.models import Project, Deployment, DeploymentStatus
-from dprod_shared.exceptions import DeploymentError
+from services.shared.core.models import Project, Deployment, DeploymentStatus
+from services.shared.core.exceptions import DeploymentError
 
 # Import our services
 import sys
-sys.path.append('/app/services')
-from detector.core.detector import ProjectDetector
-from orchestrator.core.deployment_manager import DeploymentManager
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '../../../../..'))
+from services.detector.core.detector import ProjectDetector
+from services.orchestrator.core.deployment_manager import DeploymentManager
 
 
 class DeploymentService:

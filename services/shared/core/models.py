@@ -65,6 +65,7 @@ class ProjectBase(BaseModel):
     """Base project model."""
     name: str = Field(..., min_length=1, max_length=50, description="Project name")
     subdomain: Optional[str] = Field(None, description="Project subdomain")
+    custom_domain: Optional[str] = Field(None, description="Custom domain (premium feature)")
 
 
 class ProjectCreate(ProjectBase):

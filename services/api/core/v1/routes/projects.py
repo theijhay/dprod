@@ -6,8 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from ...db.database import get_db
-from ...auth.dependencies import get_current_user
-from dprod_shared.models import Project, ProjectCreate, ProjectResponse, User
+from ...v1.auth.dependencies import get_current_user
+from services.shared.core.models import Project, ProjectCreate, ProjectResponse, User
 
 router = APIRouter()
 

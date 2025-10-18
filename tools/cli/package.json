@@ -1,10 +1,10 @@
 {
   "name": "dprod-cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Dprod CLI - Zero-configuration deployment platform",
   "main": "src/index.js",
   "bin": {
-    "dprod": "./bin/dprod"
+    "dprod": "bin/dprod"
   },
   "scripts": {
     "start": "node src/index.js",

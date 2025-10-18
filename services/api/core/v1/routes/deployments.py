@@ -6,9 +6,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from ...db.database import get_db
-from ...auth.dependencies import get_current_user
+from ...v1.auth.dependencies import get_current_user
 from ...v1.services.deployment_service import DeploymentService
-from dprod_shared.models import Project, Deployment, DeploymentCreate, DeploymentResponse, User
+from services.shared.core.models import Project, Deployment, DeploymentCreate, DeploymentResponse, User
 
 router = APIRouter()
 deployment_service = DeploymentService()

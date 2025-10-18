@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from ...db.database import get_db
-from dprod_shared.models import User
+from services.shared.core.models import User
 
 security = HTTPBearer()
 

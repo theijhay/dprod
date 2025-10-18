@@ -1,343 +1,279 @@
 """Docker container management for deployments."""
 
 import asyncio
-import os
-import tempfile
-from pathlib import Path
-from typing import Optional, Dict, Any
-import uuid
-
 import docker
-from docker.errors import DockerException
+import uuid
+from pathlib import Path
+from typing import Dict, Any, Optional, List
+from datetime import datetime
 
-from dprod_shared.models import ProjectConfig, ProjectType
-from dprod_shared.exceptions import ContainerError, BuildError
+from services.shared.core.models import Project, ProjectConfig
+from services.shared.core.exceptions import ContainerError, ResourceLimitError
 
 
 class DockerManager:
-    """Manages Docker containers for project deployments."""
+    """Manages Docker containers for deployments."""
     
-    def __init__(self, docker_socket_path: str = "/var/run/docker.sock"):
+    def __init__(self):
         """Initialize Docker manager."""
-        self.docker_socket_path = docker_socket_path
-        self.client = docker.from_env()
-        self.containers: Dict[str, Any] = {}
+        try:
+            # Use the correct Docker client configuration
+            self.client = docker.DockerClient(base_url='unix://var/run/docker.sock')
+            self.client.ping()  # Test connection
+            
+            self.docker_available = True
+            print("✅ Docker connection established")
+            
+        except Exception as e:
+            print(f"❌ Failed to connect to Docker: {e}")
+            print("   Please ensure Docker is running and accessible")
+            raise ContainerError(f"Failed to connect to Docker: {e}")
     
-    async def create_deployment_container(
-        self,
-        project_id: str,
-        project_config: ProjectConfig,
-        source_code_path: Path
+    async def build_image(
+        self, 
+        project: Project, 
+        source_code: bytes, 
+        config: ProjectConfig,
+        build_context: Path
     ) -> str:
         """
-        Create and start a deployment container.
+        Build Docker image for the project.
         
         Args:
-            project_id: Unique project identifier
-            project_config: Project configuration
-            source_code_path: Path to extracted source code
+            project: Project database model
+            source_code: Compressed source code bytes
+            config: Project configuration
+            build_context: Path to build context
             
         Returns:
-            str: Container ID
-            
-        Raises:
-            ContainerError: If container creation fails
+            Image ID
         """
         try:
-            # Generate unique container name
-            container_name = f"dprod-{project_id}-{uuid.uuid4().hex[:8]}"
+            print(f"🐳 Building Docker image for {project.name}")
+            
+            # Generate unique image name
+            image_name = f"dprod-{project.name.lower()}-{uuid.uuid4().hex[:8]}"
+            image_tag = f"{image_name}:latest"
             
             # Generate Dockerfile
-            dockerfile_content = self._generate_dockerfile(project_config)
+            dockerfile_content = self._generate_dockerfile(config)
+            dockerfile_path = build_context / "Dockerfile"
             
-            # Create temporary directory for build context
-            with tempfile.TemporaryDirectory() as temp_dir:
-                temp_path = Path(temp_dir)
-                
-                # Write Dockerfile
-                dockerfile_path = temp_path / "Dockerfile"
-                dockerfile_path.write_text(dockerfile_content)
-                
-                # Copy source code
-                import shutil
-                app_dir = temp_path / "app"
-                shutil.copytree(source_code_path, app_dir)
-                
-                # Build Docker image
-                image_tag = f"dprod-{project_id}:latest"
-                print(f"🔨 Building Docker image: {image_tag}")
-                
-                image, build_logs = self.client.images.build(
-                    path=str(temp_path),
-                    tag=image_tag,
-                    rm=True,
-                    forcerm=True
-                )
-                
-                # Print build logs
-                for log in build_logs:
-                    if 'stream' in log:
-                        print(f"📦 {log['stream'].strip()}")
-                
-                # Run container
-                print(f"🚀 Starting container: {container_name}")
-                container = self.client.containers.run(
-                    image_tag,
-                    name=container_name,
-                    ports={f"{project_config.port}/tcp": None},  # Dynamic port mapping
-                    environment=project_config.environment,
-                    detach=True,
-                    remove=False,
-                    mem_limit="512m",  # 512MB memory limit
-                    cpu_period=100000,
-                    cpu_quota=50000,  # 0.5 CPU
-                    working_dir="/app"
-                )
-                
-                # Store container reference
-                self.containers[project_id] = {
-                    "container": container,
-                    "image_tag": image_tag,
-                    "port": project_config.port
-                }
-                
-                print(f"✅ Container started: {container.id[:12]}")
-                return container.id
-                
-        except DockerException as e:
-            raise ContainerError(f"Failed to create container: {e}")
-        except Exception as e:
-            raise ContainerError(f"Unexpected error creating container: {e}")
-    
-    def _generate_dockerfile(self, project_config: ProjectConfig) -> str:
-        """Generate Dockerfile content based on project configuration."""
-        if project_config.type == ProjectType.NODEJS:
-            return self._generate_nodejs_dockerfile(project_config)
-        elif project_config.type == ProjectType.PYTHON:
-            return self._generate_python_dockerfile(project_config)
-        elif project_config.type == ProjectType.GO:
-            return self._generate_go_dockerfile(project_config)
-        elif project_config.type == ProjectType.STATIC:
-            return self._generate_static_dockerfile(project_config)
-        else:
-            return self._generate_generic_dockerfile(project_config)
-    
-    def _generate_nodejs_dockerfile(self, config: ProjectConfig) -> str:
-        """Generate Dockerfile for Node.js projects."""
-        return f"""FROM node:18-alpine
-
-WORKDIR /app
-
-# Copy package files
-COPY app/package*.json ./
-
-# Install dependencies
-RUN npm install --production
-
-# Copy source code
-COPY app/ .
-
-# Expose port
-EXPOSE {config.port}
-
-# Set environment variables
-{self._format_env_vars(config.environment)}
-
-# Start application
-CMD {config.start_command}
-"""
-    
-    def _generate_python_dockerfile(self, config: ProjectConfig) -> str:
-        """Generate Dockerfile for Python projects."""
-        build_cmd = config.build_command or "pip install -r requirements.txt"
-        return f"""FROM python:3.11-slim
-
-WORKDIR /app
-
-# Copy requirements first for better caching
-COPY app/requirements*.txt ./
-
-# Install dependencies
-RUN {build_cmd}
-
-# Copy source code
-COPY app/ .
-
-# Expose port
-EXPOSE {config.port}
-
-# Set environment variables
-{self._format_env_vars(config.environment)}
-
-# Start application
-CMD {config.start_command}
-"""
-    
-    def _generate_go_dockerfile(self, config: ProjectConfig) -> str:
-        """Generate Dockerfile for Go projects."""
-        return f"""FROM golang:1.21-alpine
-
-WORKDIR /app
-
-# Copy go mod files
-COPY app/go.mod app/go.sum ./
-
-# Download dependencies
-RUN go mod download
-
-# Copy source code
-COPY app/ .
-
-# Build the application
-RUN go build -o main .
-
-# Expose port
-EXPOSE {config.port}
-
-# Set environment variables
-{self._format_env_vars(config.environment)}
-
-# Start application
-CMD ./main
-"""
-    
-    def _generate_static_dockerfile(self, config: ProjectConfig) -> str:
-        """Generate Dockerfile for static sites."""
-        return f"""FROM nginx:alpine
-
-# Copy static files
-COPY app/ /usr/share/nginx/html/
-
-# Expose port
-EXPOSE {config.port}
-
-# Start nginx
-CMD ["nginx", "-g", "daemon off;"]
-"""
-    
-    def _generate_generic_dockerfile(self, config: ProjectConfig) -> str:
-        """Generate generic Dockerfile."""
-        return f"""FROM python:3.11-slim
-
-WORKDIR /app
-
-# Copy source code
-COPY app/ .
-
-# Install any requirements if they exist
-RUN if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-
-# Expose port
-EXPOSE {config.port}
-
-# Set environment variables
-{self._format_env_vars(config.environment)}
-
-# Start application
-CMD {config.start_command}
-"""
-    
-    def _format_env_vars(self, environment: Dict[str, str]) -> str:
-        """Format environment variables for Dockerfile."""
-        if not environment:
-            return ""
-        
-        env_lines = []
-        for key, value in environment.items():
-            env_lines.append(f"ENV {key}={value}")
-        
-        return "\n".join(env_lines)
-    
-    async def get_container_port(self, project_id: str) -> Optional[int]:
-        """Get the mapped port for a container."""
-        if project_id not in self.containers:
-            return None
-        
-        container = self.containers[project_id]["container"]
-        port_info = container.ports
-        
-        if port_info:
-            # Get the first mapped port
-            for container_port, host_ports in port_info.items():
-                if host_ports:
-                    return host_ports[0]["HostPort"]
-        
-        return None
-    
-    async def get_container_logs(self, project_id: str) -> str:
-        """Get container logs."""
-        if project_id not in self.containers:
-            return "Container not found"
-        
-        container = self.containers[project_id]["container"]
-        return container.logs().decode('utf-8')
-    
-    async def stop_container(self, project_id: str) -> bool:
-        """Stop and remove a container."""
-        if project_id not in self.containers:
-            return False
-        
-        try:
-            container_info = self.containers[project_id]
-            container = container_info["container"]
+            with open(dockerfile_path, 'w') as f:
+                f.write(dockerfile_content)
             
-            # Stop container
-            container.stop(timeout=10)
-            
-            # Remove container
-            container.remove()
-            
-            # Remove image
-            try:
-                self.client.images.remove(container_info["image_tag"])
-            except DockerException:
-                pass  # Image might be in use
-            
-            # Remove from tracking
-            del self.containers[project_id]
-            
-            print(f"🛑 Container stopped and removed: {project_id}")
-            return True
-            
-        except DockerException as e:
-            print(f"⚠️  Error stopping container {project_id}: {e}")
-            return False
-    
-    async def cleanup_old_containers(self, max_age_hours: int = 24):
-        """Clean up old containers and images."""
-        try:
-            # Get all containers with dprod prefix
-            containers = self.client.containers.list(
-                all=True,
-                filters={"name": "dprod-"}
+            # Build image
+            print(f"📦 Building image: {image_tag}")
+            image, build_logs = self.client.images.build(
+                path=str(build_context),
+                tag=image_tag,
+                rm=True,
+                forcerm=True,
+                labels={"dprod": "true", "project": project.name}
             )
             
-            for container in containers:
-                # Check container age
-                created_at = container.attrs["Created"]
-                # Simple cleanup - remove containers older than max_age_hours
-                # In production, you'd want more sophisticated cleanup logic
-                
-                # Stop and remove old containers
-                if container.status == "running":
-                    container.stop(timeout=5)
-                container.remove()
-                
-                print(f"🧹 Cleaned up old container: {container.name}")
-                
-        except DockerException as e:
-            print(f"⚠️  Error during cleanup: {e}")
+            print(f"✅ Image built successfully: {image.id}")
+            return image.id
+            
+        except Exception as e:
+            print(f"❌ Failed to build image: {e}")
+            raise ContainerError(f"Image build failed: {e}")
     
-    def list_containers(self) -> Dict[str, Dict[str, Any]]:
-        """List all managed containers."""
-        result = {}
-        for project_id, info in self.containers.items():
-            container = info["container"]
-            result[project_id] = {
-                "container_id": container.id,
+    async def run_container(
+        self, 
+        project: Project, 
+        image_id: str, 
+        config: ProjectConfig
+    ) -> str:
+        """
+        Run container from the built image.
+        
+        Args:
+            project: Project database model
+            image_id: Docker image ID
+            config: Project configuration
+            
+        Returns:
+            Container ID
+        """
+        try:
+            print(f"🚀 Starting container for {project.name}")
+            
+            # Generate unique container name
+            container_name = f"dprod-{project.name.lower()}-{uuid.uuid4().hex[:8]}"
+            
+            # Container configuration
+            container_config = {
+                "image": image_id,
+                "name": container_name,
+                "ports": {f"{config.port}/tcp": None},  # Random port mapping
+                "environment": config.environment,
+                "detach": True,
+                "remove": False,
+                "mem_limit": "512m",  # 512MB memory limit
+                "cpu_period": 100000,
+                "cpu_quota": 50000,  # 50% CPU limit
+                "labels": {
+                    "dprod": "true",
+                    "project": project.name,
+                    "project_id": str(project.id)
+                }
+            }
+            
+            # Run container
+            container = self.client.containers.run(**container_config)
+            
+            print(f"✅ Container started: {container.id}")
+            return container.id
+            
+        except Exception as e:
+            print(f"❌ Failed to start container: {e}")
+            raise ContainerError(f"Container start failed: {e}")
+    
+    async def get_container_info(self, container_id: str) -> Dict[str, Any]:
+        """Get container information."""
+        try:
+            container = self.client.containers.get(container_id)
+            
+            # Get port mappings
+            ports = {}
+            if container.attrs.get("NetworkSettings", {}).get("Ports"):
+                for container_port, host_ports in container.attrs["NetworkSettings"]["Ports"].items():
+                    if host_ports:
+                        ports[container_port] = host_ports[0]["HostPort"]
+            
+            return {
+                "id": container.id,
                 "name": container.name,
                 "status": container.status,
-                "port": info["port"],
-                "image": info["image_tag"]
+                "ports": ports,
+                "created": container.attrs["Created"],
+                "image": container.attrs["Config"]["Image"]
             }
-        return result
+            
+        except Exception as e:
+            raise ContainerError(f"Failed to get container info: {e}")
+    
+    async def stop_container(self, container_id: str) -> bool:
+        """Stop and remove container."""
+        try:
+            container = self.client.containers.get(container_id)
+            container.stop()
+            container.remove()
+            print(f"✅ Container stopped and removed: {container_id}")
+            return True
+            
+        except Exception as e:
+            print(f"❌ Failed to stop container: {e}")
+            return False
+    
+    async def get_container_logs(self, container_id: str) -> str:
+        """Get container logs."""
+        try:
+            container = self.client.containers.get(container_id)
+            logs = container.logs().decode('utf-8')
+            return logs
+            
+        except Exception as e:
+            raise ContainerError(f"Failed to get container logs: {e}")
+    
+    async def list_containers(self) -> List[Dict[str, Any]]:
+        """List all Dprod containers."""
+        try:
+            containers = self.client.containers.list(
+                all=True,
+                filters={"label": "dprod=true"}
+            )
+            
+            container_list = []
+            for container in containers:
+                container_list.append({
+                    "id": container.id,
+                    "name": container.name,
+                    "status": container.status,
+                    "image": container.attrs["Config"]["Image"],
+                    "created": container.attrs["Created"]
+                })
+            
+            return container_list
+            
+        except Exception as e:
+            raise ContainerError(f"Failed to list containers: {e}")
+    
+    def _generate_dockerfile(self, config: ProjectConfig) -> str:
+        """Generate Dockerfile content."""
+        if config.type.value == "static":
+            return f"""FROM nginx:alpine
+
+# Copy static files
+COPY . /usr/share/nginx/html
+
+# Copy nginx configuration
+RUN echo 'server {{' > /etc/nginx/conf.d/default.conf && \\
+    echo '    listen 80;' >> /etc/nginx/conf.d/default.conf && \\
+    echo '    server_name localhost;' >> /etc/nginx/conf.d/default.conf && \\
+    echo '    root /usr/share/nginx/html;' >> /etc/nginx/conf.d/default.conf && \\
+    echo '    index index.html index.htm;' >> /etc/nginx/conf.d/default.conf && \\
+    echo '    location / {{' >> /etc/nginx/conf.d/default.conf && \\
+    echo '        try_files $uri $uri/ /index.html;' >> /etc/nginx/conf.d/default.conf && \\
+    echo '    }}' >> /etc/nginx/conf.d/default.conf && \\
+    echo '}}' >> /etc/nginx/conf.d/default.conf
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]
+"""
+        else:
+            # Get base image
+            base_images = {
+                "nodejs": "node:18",  # Use the available local image
+                "python": "python:3.11-slim", 
+                "go": "golang:1.21-alpine",
+                "unknown": "alpine:latest"
+            }
+            base_image = base_images.get(config.type.value, "alpine:latest")
+            
+            # Get copy commands
+            copy_commands = {
+                "nodejs": "COPY package*.json ./",
+                "python": "COPY requirements*.txt pyproject.toml setup.py* ./",
+                "go": "COPY go.mod go.sum ./"
+            }
+            copy_cmd = copy_commands.get(config.type.value, "")
+            
+            # Get install commands
+            install_commands = {
+                "nodejs": "RUN npm install --only=production",
+                "python": "RUN pip install --no-cache-dir -r requirements.txt",
+                "go": "RUN go mod download"
+            }
+            install_cmd = install_commands.get(config.type.value, "")
+            
+            # Environment variables
+            env_vars = ""
+            if config.environment:
+                for key, value in config.environment.items():
+                    env_vars += f"ENV {key}={value}\n"
+            
+            return f"""FROM {base_image}
+
+WORKDIR {config.install_path}
+
+# Copy package files first for better caching
+{copy_cmd}
+
+# Install dependencies
+{install_cmd}
+
+# Copy source code
+COPY . .
+
+# Expose port
+EXPOSE {config.port}
+
+# Set environment variables
+{env_vars}
+
+# Start command
+CMD {config.start_command}
+"""

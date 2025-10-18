@@ -14,7 +14,7 @@ dev: ## Start development environment
 
 dev-api: ## Start API server only
 	@echo "Starting API server..."
-	@cd services/api && python -m uvicorn core.main:app --reload --host 0.0.0.0 --port 8000
+	@poetry run uvicorn services.api.core.main:app --reload --host 0.0.0.0 --port 8000
 
 dev-cli: ## Start CLI development
 	@echo "Starting CLI development..."
@@ -49,7 +49,7 @@ clean: ## Clean up development environment
 
 build: ## Build all packages
 	@echo "Building all packages..."
-	@cd services/api && python -m build
+	@cd services/api && poetry run python -m build
 	@cd tools/cli && npm run build
 	@cd tools/frontend && npm run build
 

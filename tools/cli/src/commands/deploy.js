@@ -1,7 +1,7 @@
 const { Command } = require('commander');
 const path = require('path');
 const fs = require('fs-extra');
-const { deployHandler } = require('../lib/deploy-handler');
+const deployHandler = require('../lib/deploy-handler');
 const { validateProject } = require('../lib/validator');
 
 async function deployAction(projectName, options) {
@@ -10,7 +10,7 @@ async function deployAction(projectName, options) {
     await validateProject(process.cwd());
     
     // 2. Execute deployment
-    const result = await deployHandler({
+    const result = await deployHandler.deploy({
       projectPath: process.cwd(),
       projectName: projectName || options.name,
       envFile: options.env,

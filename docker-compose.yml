@@ -66,20 +66,20 @@ services:
       - api
     command: ["tail", "-f", "/dev/null"]  # Keep container running
 
-  frontend:
-    build:
-      context: .
-      dockerfile: tools/frontend/Dockerfile
-    container_name: dprod-frontend
-    ports:
-      - "3000:3000"
-    environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
-    depends_on:
-      - api
-    volumes:
-      - ./tools:/app/tools
-    command: ["npm", "run", "dev"]
+  # frontend:
+  #   build:
+  #     context: .
+  #     dockerfile: tools/frontend/Dockerfile
+  #   container_name: dprod-frontend
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     - NEXT_PUBLIC_API_URL=http://localhost:8000
+  #   depends_on:
+  #     - api
+  #   volumes:
+  #     - ./tools:/app/tools
+  #   command: ["npm", "run", "dev"]
 
 volumes:
   postgres_data:

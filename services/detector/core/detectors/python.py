@@ -1,10 +1,11 @@
 """Python project detector."""
 
+import configparser
 from pathlib import Path
-from typing import Optional
+from typing import Dict, Any
 
-from dprod_shared.models import ProjectConfig, ProjectType
 from .base import BaseDetector
+from services.shared.core.models import ProjectType, ProjectConfig
 
 
 class PythonDetector(BaseDetector):
@@ -16,109 +17,66 @@ class PythonDetector(BaseDetector):
     def can_handle(self, project_path: Path) -> bool:
         """Check if this is a Python project."""
         # Check for common Python project files
-        python_indicators = [
+        python_files = [
             "requirements.txt",
             "pyproject.toml", 
             "setup.py",
             "Pipfile",
-            "main.py",
-            "app.py",
-            "manage.py"  # Django
+            "poetry.lock"
         ]
         
-        for indicator in python_indicators:
-            if self._find_file(project_path, indicator):
-                return True
-        
-        return False
+        return any((project_path / file).exists() for file in python_files)
     
     def get_config(self, project_path: Path) -> ProjectConfig:
-        """Get Python project configuration."""
-        # Determine build command
-        build_command = self._get_build_command(project_path)
-        
-        # Determine start command
-        start_command = self._get_start_command(project_path)
-        
-        # Determine port
-        port = self._get_port(project_path)
-        
-        # Get environment variables
-        environment = self._get_environment()
-        
-        return ProjectConfig(
+        """Generate configuration for Python project."""
+        # Default configuration
+        config = ProjectConfig(
             type=ProjectType.PYTHON,
-            build_command=build_command,
-            start_command=start_command,
-            port=port,
-            environment=environment
+            build_command="pip install --no-cache-dir -r requirements.txt",
+            start_command="python app.py",
+            port=8000,
+            environment={"PYTHONUNBUFFERED": "1"},
+            install_path="/app"
         )
-    
-    def _get_build_command(self, project_path: Path) -> str:
-        """Determine the build command."""
-        if self._find_file(project_path, "requirements.txt"):
-            return "pip install -r requirements.txt"
-        elif self._find_file(project_path, "pyproject.toml"):
-            return "pip install -e ."
-        elif self._find_file(project_path, "Pipfile"):
-            return "pipenv install"
-        else:
-            return "pip install -r requirements.txt"  # Default
-    
-    def _get_start_command(self, project_path: Path) -> str:
-        """Determine the start command."""
-        # Check for common Python entry points
-        entry_points = [
-            "main.py",
-            "app.py", 
-            "manage.py",  # Django
-            "run.py",
-            "server.py"
-        ]
         
-        for entry_point in entry_points:
-            if self._find_file(project_path, entry_point):
-                return f"python {entry_point}"
+        # Try to detect the main application file
+        main_files = ["app.py", "main.py", "server.py", "wsgi.py", "manage.py"]
+        for main_file in main_files:
+            if (project_path / main_file).exists():
+                config.start_command = f"python {main_file}"
+                break
         
-        # Check for uvicorn/fastapi in requirements
-        requirements_file = self._find_file(project_path, "requirements.txt")
-        if requirements_file:
-            requirements = self._read_text_file(requirements_file)
-            if "uvicorn" in requirements.lower():
-                return "uvicorn main:app --host 0.0.0.0 --port 8000"
-            elif "flask" in requirements.lower():
-                return "python app.py"
-            elif "django" in requirements.lower():
-                return "python manage.py runserver 0.0.0.0:8000"
+        # Check for specific requirements file
+        if (project_path / "requirements.txt").exists():
+            config.build_command = "pip install --no-cache-dir -r requirements.txt"
+        elif (project_path / "pyproject.toml").exists():
+            config.build_command = "pip install --no-cache-dir ."
         
-        # Default fallback
-        return "python app.py"
-    
-    def _get_port(self, project_path: Path) -> int:
-        """Determine the port."""
-        # Check for port in common files
-        for filename in ["main.py", "app.py", "server.py"]:
-            file_path = self._find_file(project_path, filename)
-            if file_path:
-                content = self._read_text_file(file_path)
-                # Look for port assignments
-                for line in content.split('\n'):
-                    if 'port' in line.lower() and '=' in line:
-                        try:
-                            # Extract port number
-                            parts = line.split('=')
-                            if len(parts) > 1:
-                                port_str = parts[1].strip().rstrip(',')
-                                return int(port_str)
-                        except ValueError:
-                            continue
+        # Try to read pyproject.toml for better configuration
+        pyproject_path = project_path / "pyproject.toml"
+        if pyproject_path.exists():
+            try:
+                config_parser = configparser.ConfigParser()
+                config_parser.read(pyproject_path)
+                
+                if "tool.dprod" in config_parser:
+                    dprod_section = config_parser["tool.dprod"]
+                    
+                    if "port" in dprod_section:
+                        config.port = int(dprod_section["port"])
+                    
+                    if "start_command" in dprod_section:
+                        config.start_command = dprod_section["start_command"]
+                    
+                    if "environment" in dprod_section:
+                        # Parse environment variables (format: KEY1=value1,KEY2=value2)
+                        env_vars = dprod_section["environment"].split(",")
+                        for env_var in env_vars:
+                            if "=" in env_var:
+                                key, value = env_var.split("=", 1)
+                                config.environment[key.strip()] = value.strip()
+                
+            except Exception as e:
+                print(f"Warning: Could not parse pyproject.toml: {e}")
         
-        # Default port for Python
-        return 8000
-    
-    def _get_environment(self) -> dict:
-        """Get environment variables for Python projects."""
-        return {
-            "PYTHONUNBUFFERED": "1",
-            "PORT": "8000"
-        }
+        return config

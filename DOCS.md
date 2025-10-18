@@ -50,6 +50,24 @@ dprod deploy
 # → ✅ Success! Your app is live at: https://your-project-abc123.dprod.app
 ```
 
+### ✅ Current Status
+
+**Fully Working Features:**
+- ✅ **CLI Tool**: Published to npm as `dprod-cli`
+- ✅ **API Server**: Complete with authentication and project management
+- ✅ **Project Detection**: Automatically detects Node.js, Python, Go, and Static projects
+- ✅ **Docker Integration**: Builds and runs containers automatically
+- ✅ **URL Generation**: Free tier with `*.dprod.app` subdomains
+- ✅ **Real-time Logs**: Live deployment progress streaming
+- ✅ **Database**: PostgreSQL with user and project management
+- ✅ **Authentication**: Email-based login with API keys
+
+**Ready for Production:**
+- 🚀 **Deploy any Node.js project** with `dprod deploy`
+- 🚀 **Get instant URLs** - no configuration needed
+- 🚀 **Real-time monitoring** with live logs
+- 🚀 **Zero setup** - works out of the box
+
 **No configuration files. No server setup. No infrastructure knowledge required.**
 
 ### Key Features
@@ -363,20 +381,19 @@ open http://localhost:8000/docs
 ### 4. Install and Test CLI
 
 ```bash
-# Install CLI dependencies
+# Install CLI globally (from npm)
+npm install -g dprod-cli
+
+# Or install locally for development
 cd tools/cli
 npm install
+npm link
 
 # Test CLI
-node src/index.js --help
+dprod --help
 
-# Register a user (via API)
-curl -X POST http://localhost:8000/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"email": "test@example.com"}'
-
-# Login with CLI (using the API key from registration)
-node src/index.js login --token YOUR_API_KEY
+# Login with email
+dprod login -e test@example.com
 ```
 
 ### 5. Deploy Your First Project
@@ -389,7 +406,11 @@ echo '{"name":"test","version":"1.0.0","scripts":{"start":"node index.js"}}' > p
 echo 'console.log("Hello from Dprod!");' > index.js
 
 # Deploy it
-node ../tools/cli/src/index.js deploy
+dprod deploy
+
+# Your app will be available at:
+# Development: http://localhost:PORT
+# Production: https://test.dprod.app
 ```
 
 ---
@@ -493,6 +514,57 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 
 # CLI Configuration
 DPROD_API_URL=http://localhost:8000
+
+# URL Generation Configuration
+# Free tier: All users get *.dprod.app subdomains
+# Premium tier: Users can add custom domains
+
+# Development mode (uses localhost with ports)
+NODE_ENV=development
+
+# Production mode (uses dprod.app subdomains)
+# NODE_ENV=production
+```
+
+### URL Generation
+
+Dprod uses a freemium model for URL generation:
+
+#### **Free Tier (Default)**
+- **URL**: `https://your-app.dprod.app`
+- **Features**: Automatic subdomain generation
+- **Cost**: Free
+- **Use Case**: Perfect for getting started, testing, and small projects
+
+#### **Premium Tier (Future)**
+- **URL**: `https://your-custom-domain.com`
+- **Features**: Custom domain support
+- **Cost**: Paid upgrade
+- **Use Case**: Professional branding, enterprise requirements
+
+#### **Development Mode**
+- **URL**: `http://localhost:PORT`
+- **Use Case**: Local development with Docker port mapping
+
+#### **Configuration Examples**
+
+**Development:**
+```bash
+NODE_ENV=development
+# Result: http://localhost:32786
+```
+
+**Production (Free Tier):**
+```bash
+NODE_ENV=production
+# Result: https://my-app.dprod.app
+```
+
+**Production (Premium Tier):**
+```bash
+NODE_ENV=production
+# Custom domain set via API: myapp.com
+# Result: https://myapp.com
 ```
 
 ### Service-Specific Configuration
@@ -627,13 +699,16 @@ Error responses:
 ### Installation
 
 ```bash
-# Install from source
+# Install globally from npm (recommended)
+npm install -g dprod-cli
+
+# Or install from source for development
 cd tools/cli
 npm install
 npm link
 
-# Or use directly
-node src/index.js --help
+# Verify installation
+dprod --help
 ```
 
 ### Commands

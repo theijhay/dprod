@@ -1,17 +1,17 @@
-"""Base detector class for all project type detectors."""
+"""Base class for project detectors."""
 
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Optional
 
-from dprod_shared.models import ProjectConfig, ProjectType
+from services.shared.core.models import ProjectType, ProjectConfig
 
 
 class BaseDetector(ABC):
-    """Base class for all project type detectors."""
+    """Base class for all project detectors."""
     
     def __init__(self, project_type: ProjectType):
-        """Initialize the detector with project type."""
+        """Initialize detector with project type."""
         self.project_type = project_type
     
     @abstractmethod
@@ -23,43 +23,94 @@ class BaseDetector(ABC):
             project_path: Path to the project directory
             
         Returns:
-            bool: True if this detector can handle the project
+            True if this detector can handle the project
         """
         pass
     
     @abstractmethod
     def get_config(self, project_path: Path) -> ProjectConfig:
         """
-        Get project configuration for the detected project.
+        Generate project configuration.
         
         Args:
             project_path: Path to the project directory
             
         Returns:
-            ProjectConfig: Project configuration
+            ProjectConfig for the project
         """
         pass
     
-    def _find_file(self, project_path: Path, filename: str) -> Optional[Path]:
-        """Find a file in the project directory."""
-        file_path = project_path / filename
-        return file_path if file_path.exists() else None
+    def generate_dockerfile(self, config: ProjectConfig) -> str:
+        """
+        Generate Dockerfile content for the project.
+        
+        Args:
+            config: Project configuration
+            
+        Returns:
+            Dockerfile content as string
+        """
+        dockerfile = f"""FROM {self._get_base_image(config.type)}
+
+WORKDIR {config.install_path}
+
+# Copy package files first for better caching
+{self._get_copy_commands(config.type)}
+
+# Install dependencies
+{self._get_install_commands(config.type)}
+
+# Copy source code
+COPY . .
+
+# Expose port
+EXPOSE {config.port}
+
+# Set environment variables
+{self._get_env_commands(config.environment)}
+
+# Start command
+CMD {config.start_command}
+"""
+        return dockerfile
     
-    def _read_json_file(self, file_path: Path) -> dict:
-        """Read and parse a JSON file."""
-        import json
-        try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except (json.JSONDecodeError, UnicodeDecodeError) as e:
-            raise ValueError(f"Failed to parse JSON file {file_path}: {e}")
+    def _get_base_image(self, project_type: ProjectType) -> str:
+        """Get base Docker image for project type."""
+        images = {
+            ProjectType.NODEJS: "node:18",  # Use the available local image
+            ProjectType.PYTHON: "python:3.11-slim",
+            ProjectType.GO: "golang:1.21-alpine",
+            ProjectType.STATIC: "nginx:alpine"
+        }
+        return images.get(project_type, "alpine:latest")
     
-    def _read_text_file(self, file_path: Path) -> str:
-        """Read a text file."""
-        try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                return f.read().strip()
-        except UnicodeDecodeError:
-            # Try with different encoding
-            with open(file_path, 'r', encoding='latin-1') as f:
-                return f.read().strip()
+    def _get_copy_commands(self, project_type: ProjectType) -> str:
+        """Get COPY commands for package files."""
+        commands = {
+            ProjectType.NODEJS: "COPY package*.json ./",
+            ProjectType.PYTHON: "COPY requirements*.txt pyproject.toml setup.py* ./",
+            ProjectType.GO: "COPY go.mod go.sum ./",
+            ProjectType.STATIC: ""
+        }
+        return commands.get(project_type, "")
+    
+    def _get_install_commands(self, project_type: ProjectType) -> str:
+        """Get install commands for dependencies."""
+        commands = {
+            ProjectType.NODEJS: "RUN npm install --only=production",
+            ProjectType.PYTHON: "RUN pip install --no-cache-dir -r requirements.txt",
+            ProjectType.GO: "RUN go mod download",
+            ProjectType.STATIC: ""
+        }
+        return commands.get(project_type, "")
+    
+    def _get_env_commands(self, environment: dict) -> str:
+        """Get ENV commands for environment variables."""
+        if not environment:
+            return ""
+        
+        env_lines = []
+        for key, value in environment.items():
+            env_lines.append(f"ENV {key}={value}")
+        
+        return "\n".join(env_lines)
