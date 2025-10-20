@@ -91,6 +91,51 @@ Dprod is a comprehensive deployment platform with the following components:
    - Development: `http://localhost:PORT`
    - Production: `https://your-project.dprod.app`
 
+## 🏗️ Deploy Dprod Platform
+
+### Option 1: AWS CodeDeploy (Recommended)
+
+1. **Deploy Infrastructure**
+   ```bash
+   cd infrastructure/terraform
+   terraform apply -var="db_password=YOUR_SECURE_PASSWORD"
+   ```
+
+2. **Set up CodeDeploy**
+   ```bash
+   # Create CodeDeploy application
+   aws deploy create-application --application-name dprod-app --compute-platform Server
+   
+   # Create deployment group
+   aws deploy create-deployment-group \
+     --application-name dprod-app \
+     --deployment-group-name dprod-deployment-group \
+     --service-role-arn arn:aws:iam::YOUR_ACCOUNT:role/CodeDeployServiceRole \
+     --ec2-tag-filters Type=KEY_AND_VALUE,Key=Name,Value=dprod-server
+   ```
+
+3. **Deploy Application**
+   ```bash
+   aws deploy create-deployment \
+     --application-name dprod-app \
+     --deployment-group-name dprod-deployment-group \
+     --github-location repository=YOUR_USERNAME/dprod,commitId=COMMIT_HASH
+   ```
+
+### Option 2: Manual Deployment
+
+1. **Connect to EC2 instance** via AWS Console
+2. **Clone and deploy**:
+   ```bash
+   git clone https://github.com/YOUR_USERNAME/dprod.git
+   cd dprod
+   cp infrastructure/env.production.template .env.production
+   # Edit .env.production with your values
+   sudo docker-compose -f docker-compose.prod.yml up -d --build
+   ```
+
+📖 **Detailed deployment guide**: See [DEPLOYMENT.md](DEPLOYMENT.md)
+
 ### Development Setup
 
 1. **Clone the repository**
