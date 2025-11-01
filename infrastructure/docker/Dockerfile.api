@@ -27,6 +27,8 @@ RUN poetry install --only=main --no-root
 # Copy application code
 COPY services/api/ ./services/api/
 COPY services/shared/ ./services/shared/
+COPY services/detector/ ./services/detector/
+COPY services/orchestrator/ ./services/orchestrator/
 
 # Create uploads directory
 RUN mkdir -p /app/uploads /app/logs

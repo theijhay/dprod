@@ -21,7 +21,8 @@ class DeploymentService:
     def __init__(self):
         """Initialize deployment service."""
         self.detector = ProjectDetector()
-        self.deployment_manager = DeploymentManager()
+        # Defer creating DeploymentManager (requires local Docker) until used
+        self.deployment_manager = None
     
     async def deploy_project(
         self,
@@ -41,6 +42,10 @@ class DeploymentService:
         try:
             print(f"🚀 Starting deployment for project: {project.name}")
             
+            # Lazily create the deployment manager when needed
+            if self.deployment_manager is None:
+                self.deployment_manager = DeploymentManager()
+
             # Deploy using the deployment manager
             deployment_info = await self.deployment_manager.deploy_project(
                 project=project,

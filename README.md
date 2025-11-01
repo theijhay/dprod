@@ -1,284 +1,235 @@
-# Dprod - Zero-Config Deployment Platform
+# Dprod - Zero-Configuration Deployment Platform
 
 > Deploy any project with a single command, regardless of technology stack.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Node.js 18+](https://img.shields.io/badge/node.js-18+-green.svg)](https://nodejs.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-005571?logo=fastapi)](https://fastapi.tiangolo.com/)
+[![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 
-## 🎯 What is Dprod?
+## 🎯 **What is Dprod?**
 
-Dprod is a zero-configuration deployment platform that allows developers to deploy ANY project with a single command, regardless of the technology stack, without any configuration files or setup.
+Dprod is a zero-configuration deployment platform that automatically detects your project type and deploys it to the cloud with a single command. No Dockerfiles, no configuration files, no server setup required.
 
-### The Problem
+### **The Problem We Solve**
+
 - Developers waste hours configuring deployment environments
 - Writing Dockerfiles, setting up CI/CD, managing infrastructure
 - Most deployment solutions require significant configuration and platform-specific knowledge
 - What takes 5 minutes to run locally takes 5+ hours to deploy properly
 
-### The Solution
+### **The Solution**
+
 ```bash
 cd /your/project
 dprod deploy
 # → 🔍 Analyzing your project...
 # → 📦 Packaging your code...
-# → 🚀 Deploying to the cloud...
+# → 🚀 Deploying to Cloud...
 # → ✅ Success! Your app is live at: https://your-project-abc123.dprod.app
 ```
 
 **No configuration files. No server setup. No infrastructure knowledge required.**
 
-## ✅ Current Status
+## ✨ **Key Features**
 
-**Fully Working Features:**
-- ✅ **CLI Tool**: Published to npm as `dprod-cli`
-- ✅ **API Server**: Complete with authentication and project management
-- ✅ **Project Detection**: Automatically detects Node.js, Python, Go, and Static projects
-- ✅ **Docker Integration**: Builds and runs containers automatically
-- ✅ **URL Generation**: Free tier with `*.dprod.app` subdomains
-- ✅ **Real-time Logs**: Live deployment progress streaming
-- ✅ **Database**: PostgreSQL with user and project management
-- ✅ **Authentication**: Email-based login with API keys
+- ✅ **Universal Project Detection** - Automatically detects Node.js, Python, Go, and Static sites
+- ✅ **Zero Configuration** - No Dockerfiles, config files, or setup required
+- ✅ **Real-time Logs** - Stream deployment progress in real-time
+- ✅ **Auto SSL** - Automatic HTTPS with custom subdomains
+- ✅ **Resource Management** - Automatic container limits and cleanup
+- ✅ **CLI Tool** - Beautiful command-line interface with live progress updates
+- ✅ **Project Management** - Track multiple projects and deployments
+- ✅ **API Authentication** - Secure email-based login with API keys
 
-**Ready for Production:**
-- 🚀 **Deploy any Node.js project** with `dprod deploy`
-- 🚀 **Get instant URLs** - no configuration needed
-- 🚀 **Real-time monitoring** with live logs
-- 🚀 **Zero setup** - works out of the box
+## 🚀 **Quick Start**
 
-## 🏗️ Architecture
+### **Install CLI**
 
-Dprod is a comprehensive deployment platform with the following components:
+```bash
+npm install -g dprod-cli
+```
 
-### Core Services
-- **API Server** (FastAPI) - Central hub for authentication, project management, and deployment orchestration
-- **Detection Engine** (Python) - Automatically detects project types and generates configurations
-- **Orchestrator Service** (Python) - Manages Docker containers and deployment lifecycle
-- **Reverse Proxy** (Traefik) - Routes traffic to deployed applications with SSL
-- **Database** (PostgreSQL) - Stores user data, projects, and deployment history
-- **Cache** (Redis) - High-performance caching and session management
-- **File Storage** - Stores project source code and build artifacts
+### **Deploy Your First Project**
 
-### User Interfaces
-- **CLI Tool** (Node.js) - Command-line interface for developers
-- **Web Dashboard** (React) - Web-based management interface
-- **API Gateway** (Future) - External API access for integrations
+```bash
+# Navigate to your project
+cd my-awesome-app
 
-### Deployment Layer
-- **User Applications** - Docker containers running user projects with automatic subdomain routing
+# Login (first time only)
+dprod login -e your@email.com
 
-## 🚀 Quick Start
+# Deploy with zero config
+dprod deploy
 
-### Using Dprod (Recommended)
+# Your app is now live! 🎉
+```
 
-1. **Install the CLI**
+## 💡 **Real-World Usage**
+
+### **Deploy a Node.js API**
+
+```bash
+cd my-node-api
+dprod deploy
+# ✅ Deployed to: https://my-node-api.dprod.app
+```
+
+### **Deploy a Python Web App**
+
+```bash
+cd my-flask-app
+dprod deploy
+# ✅ Deployed to: https://my-flask-app.dprod.app
+```
+
+### **Deploy a Static Website**
+
+```bash
+cd my-html-site
+dprod deploy
+# ✅ Deployed to: https://my-html-site.dprod.app
+```
+
+### **Check Deployment Status**
+
+```bash
+# List all your projects
+dprod list
+
+# Check deployment status
+dprod status my-project
+
+# View deployment logs
+dprod logs my-project
+```
+
+## 🎯 **Supported Project Types**
+
+| Type | Detection | Build Command | Start Command |
+|------|-----------|---------------|---------------|
+| **Node.js** | `package.json` | `npm install` | `npm start` |
+| **Python** | `requirements.txt` | `pip install -r requirements.txt` | `python app.py` |
+| **Go** | `go.mod` | `go build` | Executes binary |
+| **Static** | HTML files | N/A | Serves with Nginx |
+
+The detection engine automatically identifies your project type and configures the appropriate build and runtime settings.
+
+## 🏗️ **Tech Stack**
+
+### **Backend Services**
+- **API Service** - FastAPI-based REST API with JWT authentication
+- **Orchestrator** - Docker container orchestration and deployment management
+- **Detector** - Intelligent project type detection and configuration generation
+- **Shared** - Common types, models, and utilities across services
+
+### **Technologies**
+
+**Backend:**
+- Python 3.11+
+- FastAPI - Modern, fast web framework
+- SQLAlchemy - Database ORM with async support
+- PostgreSQL - Relational database
+- Redis - Caching and session management
+
+**CLI:**
+- Node.js 18+
+- Commander.js - CLI framework
+- Axios - HTTP client
+
+**Containerization:**
+- Docker - Container runtime
+- Docker Compose - Local development
+
+## 📦 **Project Structure**
+
+```
+dprod/
+├── services/                   # Backend microservices
+│   ├── api/                    # FastAPI REST API
+│   ├── orchestrator/           # Deployment orchestration
+│   ├── detector/               # Project detection engine
+│   └── shared/                 # Shared utilities
+├── tools/                      # User-facing tools
+│   ├── cli/                    # Node.js CLI (published to npm)
+│   └── frontend/               # Web dashboard (future)
+└── examples/                   # Example projects
+```
+
+## 🛠️ **Development**
+
+### **Local Development Setup**
+
+```bash
+# Set up development environment
+make setup
+
+# Start development environment
+make dev
+
+# Start specific services
+make dev-api          # API server only
+make dev-cli          # CLI development
+
+# Run tests
+make test             # All tests
+make test-api         # API tests only
+```
+
+### **Project Setup**
+
+1. **Copy environment file**
    ```bash
-   npm install -g dprod-cli
+   cp env.example .env
+   # Edit .env if needed (works out of the box with Docker Compose defaults)
    ```
 
-2. **Login to Dprod**
-   ```bash
-   dprod login -e your@email.com
-   ```
-
-3. **Deploy your project**
-   ```bash
-   cd /your/project
-   dprod deploy
-   ```
-
-4. **Your app is live!**
-   - Development: `http://localhost:PORT`
-   - Production: `https://your-project.dprod.app`
-
-## 🏗️ Deploy Dprod Platform
-
-### Option 1: AWS CodeDeploy (Recommended)
-
-1. **Deploy Infrastructure**
-   ```bash
-   cd infrastructure/terraform
-   terraform apply -var="db_password=YOUR_SECURE_PASSWORD"
-   ```
-
-2. **Set up CodeDeploy**
-   ```bash
-   # Create CodeDeploy application
-   aws deploy create-application --application-name dprod-app --compute-platform Server
-   
-   # Create deployment group
-   aws deploy create-deployment-group \
-     --application-name dprod-app \
-     --deployment-group-name dprod-deployment-group \
-     --service-role-arn arn:aws:iam::YOUR_ACCOUNT:role/CodeDeployServiceRole \
-     --ec2-tag-filters Type=KEY_AND_VALUE,Key=Name,Value=dprod-server
-   ```
-
-3. **Deploy Application**
-   ```bash
-   aws deploy create-deployment \
-     --application-name dprod-app \
-     --deployment-group-name dprod-deployment-group \
-     --github-location repository=YOUR_USERNAME/dprod,commitId=COMMIT_HASH
-   ```
-
-### Option 2: Manual Deployment
-
-1. **Connect to EC2 instance** via AWS Console
-2. **Clone and deploy**:
-   ```bash
-   git clone https://github.com/YOUR_USERNAME/dprod.git
-   cd dprod
-   cp infrastructure/env.production.template .env.production
-   # Edit .env.production with your values
-   sudo docker-compose -f docker-compose.prod.yml up -d --build
-   ```
-
-📖 **Detailed deployment guide**: See [DEPLOYMENT.md](DEPLOYMENT.md)
-
-### Development Setup
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/your-org/dprod.git
-   cd dprod
-   ```
-
-2. **Run the setup script**
-   ```bash
-   ./scripts/setup-dev.sh
-   ```
-
-3. **Start the development environment**
-   ```bash
-   make dev
-   ```
-
-4. **Access the services**
-   - API Server: http://localhost:8000
-   - API Documentation: http://localhost:8000/docs
-
-### Manual Setup
-
-1. **Install dependencies**
+2. **Install dependencies**
    ```bash
    # Python dependencies
    poetry install
    
    # Node.js dependencies
    cd tools/cli && npm install
-   cd tools/frontend && npm install
    ```
 
-2. **Start services**
+3. **Start services**
    ```bash
    # Start database and Redis
    docker-compose up -d postgres redis
    
    # Start API server
    make dev-api
-   
-   # Start frontend (in another terminal)
-   make dev-frontend
    ```
 
-## 📦 Project Structure
+4. **Run migrations**
+   ```bash
+   alembic upgrade head
+   ```
 
-```
-dprod/
-├── services/                   # Backend services
-│   ├── api/                    # FastAPI backend service
-│   ├── orchestrator/           # Deployment orchestration service
-│   ├── detector/               # Project detection service
-│   └── shared/                 # Shared types & utilities
-├── tools/                      # Development tools
-│   ├── cli/                    # Node.js CLI tool
-│   └── frontend/               # Next.js web dashboard
-├── infrastructure/             # Infrastructure as Code
-├── examples/                   # Example projects for testing
-├── docs/                       # Documentation
-├── tests/                      # Integration tests
-└── scripts/                    # Development scripts
-```
+## 📚 **Documentation**
 
-## 🛠️ Development
+- [Full Documentation](DOCS.md) - Comprehensive guide to Dprod
+- [API Reference](DOCS.md#-api-reference) - REST API documentation
+- [CLI Reference](DOCS.md#-cli-reference) - Command-line interface guide
 
-### Available Commands
+## 🤝 **Contributing**
 
-```bash
-# Development
-make dev              # Start full development environment
-make dev-api          # Start API server only
-make dev-cli          # Start CLI development
-make dev-frontend     # Start frontend development
-
-# Testing
-make test             # Run all tests
-make test-api         # Run API tests
-make test-cli         # Run CLI tests
-
-# Code Quality
-make lint             # Run linting
-make clean            # Clean up development environment
-
-# Building
-make build            # Build all packages
-make install          # Install all dependencies
-```
-
-### API Endpoints
-
-- `GET /health` - Health check
-- `POST /auth/register` - Register new user
-- `POST /auth/login` - Login user
-- `GET /auth/me` - Get current user
-- `POST /projects` - Create new project
-- `GET /projects` - List user projects
-- `POST /projects/{id}/deployments` - Create deployment
-- `GET /deployments/{id}/logs` - Get deployment logs
-
-## 🎯 Supported Project Types
-
-- **Node.js** - Detects `package.json`, runs `npm install` and `npm start`
-- **Python** - Detects `requirements.txt`, runs `pip install` and `python app.py`
-- **Go** - Detects `go.mod`, runs `go mod download` and `go run main.go`
-- **Static Sites** - Detects `index.html`, serves static files
-
-## 🔧 Configuration
-
-Environment variables can be set in `.env` file:
-
-```env
-DEBUG=true
-DATABASE_URL=postgresql+asyncpg://dprod:dprod@localhost:5432/dprod
-REDIS_URL=redis://localhost:6379
-SECRET_KEY=your-secret-key-change-in-production
-API_URL=http://localhost:8000
-NEXT_PUBLIC_API_URL=http://localhost:8000
-```
-
-## 📚 Documentation
-
-- [Complete Documentation](DOCS.md) - Comprehensive guide covering architecture, development, API reference, and more
-
-## 🤝 Contributing
+We welcome contributions! Here's how you can help:
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+3. Make your changes
+4. Add tests
+5. Commit your changes (`git commit -m 'Add amazing feature'`)
+6. Push to the branch (`git push origin feature/amazing-feature`)
+7. Open a Pull Request
 
-## 📄 License
+## 📄 **License**
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🆘 Support
-
-- 📖 [Complete Documentation](DOCS.md)
-- 🐛 [Issue Tracker](https://github.com/your-org/dprod/issues)
-- 💬 [Discussions](https://github.com/your-org/dprod/discussions)
-
 ---
 
-**Made with ❤️ by the Dprod Team**
+**Built with ❤️ to make deployment simple**

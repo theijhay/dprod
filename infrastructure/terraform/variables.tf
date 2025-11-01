@@ -22,6 +22,13 @@ variable "db_password" {
   sensitive   = true
 }
 
+variable "secret_key" {
+  description = "Secret key for JWT tokens"
+  type        = string
+  sensitive   = true
+  default     = "your-secret-key-change-this"
+}
+
 variable "instance_type" {
   description = "EC2 instance type"
   type        = string

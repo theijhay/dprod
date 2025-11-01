@@ -26,7 +26,7 @@ resource "aws_codedeploy_deployment_group" "dprod_deployment_group" {
   }
 
   deployment_style {
-    deployment_option = "WITH_TRAFFIC_CONTROL"
+    deployment_option = "WITHOUT_TRAFFIC_CONTROL"
     deployment_type   = "IN_PLACE"
   }
 

@@ -1,0 +1,619 @@
+# ECS Fargate Staging Environment
+# ================================
+
+# ECR Repositories for Docker Images
+resource "aws_ecr_repository" "dprod_api" {
+  name                 = "dprod-api"
+  image_tag_mutability = "MUTABLE"
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+
+}
+
+resource "aws_ecr_repository" "dprod_orchestrator" {
+  name                 = "dprod-orchestrator"
+  image_tag_mutability = "MUTABLE"
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+
+}
+
+resource "aws_ecr_repository" "dprod_detection" {
+  name                 = "dprod-detection"
+  image_tag_mutability = "MUTABLE"
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+
+}
+
+# ECS Cluster
+resource "aws_ecs_cluster" "dprod_staging" {
+  name = "dprod-staging"
+
+  setting {
+    name  = "containerInsights"
+    value = "enabled"
+  }
+
+  tags = {
+    Environment = "staging"
+    Project     = "dprod"
+  }
+}
+
+# ECS Cluster Capacity Providers
+resource "aws_ecs_cluster_capacity_providers" "dprod_staging" {
+  cluster_name = aws_ecs_cluster.dprod_staging.name
+
+  capacity_providers = ["FARGATE", "FARGATE_SPOT"]
+
+  default_capacity_provider_strategy {
+    base              = 1
+    weight            = 100
+    capacity_provider = "FARGATE"
+  }
+}
+
+# ECS Task Execution Role
+resource "aws_iam_role" "ecs_task_execution_role" {
+  name = "dprod-ecs-task-execution-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ecs-tasks.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
+  role       = aws_iam_role.ecs_task_execution_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
+
+# ECS Task Role
+resource "aws_iam_role" "ecs_task_role" {
+  name = "dprod-ecs-task-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ecs-tasks.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+# ECS Task Role Policy for ECR access
+resource "aws_iam_role_policy" "ecs_task_ecr_policy" {
+  name = "dprod-ecs-task-ecr-policy"
+  role = aws_iam_role.ecs_task_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ecr:GetAuthorizationToken",
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:BatchGetImage"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+# Security Group for ECS Tasks
+resource "aws_security_group" "ecs_tasks" {
+  name_prefix = "dprod-ecs-tasks-"
+  vpc_id      = aws_vpc.dprod_staging_vpc.id
+
+  ingress {
+    from_port   = 8000
+    to_port     = 8002
+    protocol    = "tcp"
+    cidr_blocks = [aws_vpc.dprod_staging_vpc.cidr_block]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name        = "dprod-ecs-tasks"
+    Environment = "staging"
+    Project     = "dprod"
+  }
+}
+
+# Application Load Balancer
+resource "aws_lb" "dprod_staging" {
+  name               = "dprod-staging-alb"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.alb.id]
+  subnets            = [aws_subnet.dprod_staging_public.id, aws_subnet.dprod_staging_public_2.id]
+
+  enable_deletion_protection = false
+
+  tags = {
+    Environment = "staging"
+    Project     = "dprod"
+  }
+}
+
+# ALB Security Group
+resource "aws_security_group" "alb" {
+  name_prefix = "dprod-staging-alb-"
+  vpc_id      = aws_vpc.dprod_staging_vpc.id
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name        = "dprod-staging-alb"
+    Environment = "staging"
+    Project     = "dprod"
+  }
+}
+
+# ALB Target Group for API
+resource "aws_lb_target_group" "api" {
+  name        = "dprod-staging-api"
+  port        = 8000
+  protocol    = "HTTP"
+  vpc_id      = aws_vpc.dprod_staging_vpc.id
+  target_type = "ip"
+
+  health_check {
+    enabled             = true
+    healthy_threshold   = 2
+    interval            = 30
+    matcher             = "200"
+    path                = "/health"
+    port                = "traffic-port"
+    protocol            = "HTTP"
+    timeout             = 5
+    unhealthy_threshold = 2
+  }
+
+  tags = {
+    Environment = "staging"
+    Project     = "dprod"
+  }
+}
+
+# ALB Target Group for Orchestrator
+resource "aws_lb_target_group" "orchestrator" {
+  name        = "dprod-staging-orchestrator"
+  port        = 8001
+  protocol    = "HTTP"
+  vpc_id      = aws_vpc.dprod_staging_vpc.id
+  target_type = "ip"
+
+  health_check {
+    enabled             = true
+    healthy_threshold   = 2
+    interval            = 30
+    matcher             = "200"
+    path                = "/health"
+    port                = "traffic-port"
+    protocol            = "HTTP"
+    timeout             = 5
+    unhealthy_threshold = 2
+  }
+
+  tags = {
+    Environment = "staging"
+    Project     = "dprod"
+  }
+}
+
+# ALB Target Group for Detection
+resource "aws_lb_target_group" "detection" {
+  name        = "dprod-staging-detection"
+  port        = 8002
+  protocol    = "HTTP"
+  vpc_id      = aws_vpc.dprod_staging_vpc.id
+  target_type = "ip"
+
+  health_check {
+    enabled             = true
+    healthy_threshold   = 2
+    interval            = 30
+    matcher             = "200"
+    path                = "/health"
+    port                = "traffic-port"
+    protocol            = "HTTP"
+    timeout             = 5
+    unhealthy_threshold = 2
+  }
+
+  tags = {
+    Environment = "staging"
+    Project     = "dprod"
+  }
+}
+
+# ALB Listener
+resource "aws_lb_listener" "dprod_staging" {
+  load_balancer_arn = aws_lb.dprod_staging.arn
+  port              = "80"
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.api.arn
+  }
+}
+
+# ALB Listener Rules
+resource "aws_lb_listener_rule" "api" {
+  listener_arn = aws_lb_listener.dprod_staging.arn
+  priority     = 100
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.api.arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/api/*", "/health"]
+    }
+  }
+}
+
+resource "aws_lb_listener_rule" "orchestrator" {
+  listener_arn = aws_lb_listener.dprod_staging.arn
+  priority     = 200
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.orchestrator.arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/orchestrator/*"]
+    }
+  }
+}
+
+resource "aws_lb_listener_rule" "detection" {
+  listener_arn = aws_lb_listener.dprod_staging.arn
+  priority     = 300
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.detection.arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/detection/*"]
+    }
+  }
+}
+
+# ECS Task Definition for API
+resource "aws_ecs_task_definition" "api" {
+  family                   = "dprod-api"
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  cpu                      = 256
+  memory                   = 512
+  execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
+  task_role_arn            = aws_iam_role.ecs_task_role.arn
+
+  container_definitions = jsonencode([
+    {
+      name  = "api"
+      image = "${aws_ecr_repository.dprod_api.repository_url}:latest"
+      
+      portMappings = [
+        {
+          containerPort = 8000
+          protocol      = "tcp"
+        }
+      ]
+
+      environment = [
+        {
+          name  = "NODE_ENV"
+          value = "staging"
+        },
+        {
+          name  = "DATABASE_URL"
+          value = "postgresql://dprod:${var.db_password}@${aws_db_instance.dprod_staging_postgres.endpoint}:5432/dprod_staging"
+        },
+        {
+          name  = "REDIS_URL"
+          value = "redis://${aws_elasticache_cluster.dprod_staging_redis.cache_nodes[0].address}:6379/0"
+        }
+      ]
+
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          awslogs-group         = "/ecs/dprod-staging"
+          awslogs-region        = var.aws_region
+          awslogs-stream-prefix = "api"
+        }
+      }
+
+      healthCheck = {
+        command     = ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+        interval    = 30
+        timeout     = 5
+        retries     = 3
+        startPeriod = 60
+      }
+    }
+  ])
+
+  tags = {
+    Environment = "staging"
+    Project     = "dprod"
+  }
+}
+
+# ECS Task Definition for Orchestrator
+resource "aws_ecs_task_definition" "orchestrator" {
+  family                   = "dprod-orchestrator"
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  cpu                      = 256
+  memory                   = 512
+  execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
+  task_role_arn            = aws_iam_role.ecs_task_role.arn
+
+  container_definitions = jsonencode([
+    {
+      name  = "orchestrator"
+      image = "${aws_ecr_repository.dprod_orchestrator.repository_url}:latest"
+      
+      portMappings = [
+        {
+          containerPort = 8001
+          protocol      = "tcp"
+        }
+      ]
+
+      environment = [
+        {
+          name  = "NODE_ENV"
+          value = "staging"
+        },
+        {
+          name  = "DATABASE_URL"
+          value = "postgresql://dprod:${var.db_password}@${aws_db_instance.dprod_staging_postgres.endpoint}:5432/dprod_staging"
+        },
+        {
+          name  = "REDIS_URL"
+          value = "redis://${aws_elasticache_cluster.dprod_staging_redis.cache_nodes[0].address}:6379/0"
+        }
+      ]
+
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          awslogs-group         = "/ecs/dprod-staging"
+          awslogs-region        = var.aws_region
+          awslogs-stream-prefix = "orchestrator"
+        }
+      }
+
+      healthCheck = {
+        command     = ["CMD-SHELL", "curl -f http://localhost:8001/health || exit 1"]
+        interval    = 30
+        timeout     = 5
+        retries     = 3
+        startPeriod = 60
+      }
+    }
+  ])
+
+  tags = {
+    Environment = "staging"
+    Project     = "dprod"
+  }
+}
+
+# ECS Task Definition for Detection
+resource "aws_ecs_task_definition" "detection" {
+  family                   = "dprod-detection"
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  cpu                      = 256
+  memory                   = 512
+  execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
+  task_role_arn            = aws_iam_role.ecs_task_role.arn
+
+  container_definitions = jsonencode([
+    {
+      name  = "detection"
+      image = "${aws_ecr_repository.dprod_detection.repository_url}:latest"
+      
+      portMappings = [
+        {
+          containerPort = 8002
+          protocol      = "tcp"
+        }
+      ]
+
+      environment = [
+        {
+          name  = "NODE_ENV"
+          value = "staging"
+        },
+        {
+          name  = "DATABASE_URL"
+          value = "postgresql://dprod:${var.db_password}@${aws_db_instance.dprod_staging_postgres.endpoint}:5432/dprod_staging"
+        },
+        {
+          name  = "REDIS_URL"
+          value = "redis://${aws_elasticache_cluster.dprod_staging_redis.cache_nodes[0].address}:6379/0"
+        }
+      ]
+
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          awslogs-group         = "/ecs/dprod-staging"
+          awslogs-region        = var.aws_region
+          awslogs-stream-prefix = "detection"
+        }
+      }
+
+      healthCheck = {
+        command     = ["CMD-SHELL", "curl -f http://localhost:8002/health || exit 1"]
+        interval    = 30
+        timeout     = 5
+        retries     = 3
+        startPeriod = 60
+      }
+    }
+  ])
+
+  tags = {
+    Environment = "staging"
+    Project     = "dprod"
+  }
+}
+
+# CloudWatch Log Group
+resource "aws_cloudwatch_log_group" "dprod_staging" {
+  name              = "/ecs/dprod-staging"
+  retention_in_days = 7
+
+  tags = {
+    Environment = "staging"
+    Project     = "dprod"
+  }
+}
+
+# ECS Service for API
+resource "aws_ecs_service" "api" {
+  name            = "dprod-api"
+  cluster         = aws_ecs_cluster.dprod_staging.id
+  task_definition = aws_ecs_task_definition.api.arn
+  desired_count   = 1
+  launch_type     = "FARGATE"
+
+  network_configuration {
+    security_groups  = [aws_security_group.ecs_tasks.id]
+    subnets          = [aws_subnet.dprod_staging_public.id, aws_subnet.dprod_staging_public_2.id]
+    assign_public_ip = true
+  }
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.api.arn
+    container_name   = "api"
+    container_port   = 8000
+  }
+
+  depends_on = [aws_lb_listener.dprod_staging]
+
+  tags = {
+    Environment = "staging"
+    Project     = "dprod"
+  }
+}
+
+# ECS Service for Orchestrator
+resource "aws_ecs_service" "orchestrator" {
+  name            = "dprod-orchestrator"
+  cluster         = aws_ecs_cluster.dprod_staging.id
+  task_definition = aws_ecs_task_definition.orchestrator.arn
+  desired_count   = 1
+  launch_type     = "FARGATE"
+
+  network_configuration {
+    security_groups  = [aws_security_group.ecs_tasks.id]
+    subnets          = [aws_subnet.dprod_staging_public.id, aws_subnet.dprod_staging_public_2.id]
+    assign_public_ip = true
+  }
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.orchestrator.arn
+    container_name   = "orchestrator"
+    container_port   = 8001
+  }
+
+  depends_on = [aws_lb_listener.dprod_staging]
+
+  tags = {
+    Environment = "staging"
+    Project     = "dprod"
+  }
+}
+
+# ECS Service for Detection
+resource "aws_ecs_service" "detection" {
+  name            = "dprod-detection"
+  cluster         = aws_ecs_cluster.dprod_staging.id
+  task_definition = aws_ecs_task_definition.detection.arn
+  desired_count   = 1
+  launch_type     = "FARGATE"
+
+  network_configuration {
+    security_groups  = [aws_security_group.ecs_tasks.id]
+    subnets          = [aws_subnet.dprod_staging_public.id, aws_subnet.dprod_staging_public_2.id]
+    assign_public_ip = true
+  }
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.detection.arn
+    container_name   = "detection"
+    container_port   = 8002
+  }
+
+  depends_on = [aws_lb_listener.dprod_staging]
+
+  tags = {
+    Environment = "staging"
+    Project     = "dprod"
+  }
+}

@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
 from .utils.config import settings
-from .db.database import engine, Base
+from .db.database import settings as _db_settings
 from .v1.routes import auth, projects, deployments, health
 
 
@@ -19,11 +19,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Startup
     print("🚀 Starting Dprod API Server...")
     
-    # Create database tables
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    
-    print("✅ Database tables created")
     print(f"🌐 API Server running on http://localhost:{settings.port}")
     
     yield
@@ -51,10 +46,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.add_middleware(
-    TrustedHostMiddleware,
-    allowed_hosts=settings.allowed_hosts
-)
+# Allow all hosts in staging if explicitly enabled to pass ALB host header.
+if os.getenv("ALLOW_ALL_HOSTS", "false").lower() != "true":
+    app.add_middleware(
+        TrustedHostMiddleware,
+        allowed_hosts=settings.allowed_hosts
+    )
 
 # Include routers
 app.include_router(health.router, prefix="/health", tags=["health"])
