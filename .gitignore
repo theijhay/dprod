@@ -141,3 +141,7 @@ redis_data/
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Documentation (internal use only)
+IMPROVEMENT_PLAN.md
+dprod.md
