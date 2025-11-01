@@ -9,7 +9,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
 from .utils.config import settings
-from .db.database import settings as _db_settings
 from .v1.routes import auth, projects, deployments, health
 
 
