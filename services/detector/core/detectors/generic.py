@@ -3,7 +3,8 @@
 from pathlib import Path
 
 from .base import BaseDetector
-from services.shared.core.models import ProjectType, ProjectConfig
+from services.shared.core.models import ProjectType
+from services.shared.core.schemas import ProjectConfig
 
 
 class GenericDetector(BaseDetector):

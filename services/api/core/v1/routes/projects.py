@@ -7,7 +7,8 @@ from sqlalchemy import select
 
 from ...db.database import get_db
 from ...v1.auth.dependencies import get_current_user
-from services.shared.core.models import Project, ProjectCreate, ProjectResponse, User
+from services.shared.core.models import Project, User
+from services.shared.core.schemas import ProjectCreate, ProjectResponse
 
 router = APIRouter()
 

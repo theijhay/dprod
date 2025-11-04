@@ -4,7 +4,8 @@ import os
 from pathlib import Path
 from typing import Optional, Dict, Any
 
-from services.shared.core.models import ProjectType, ProjectConfig
+from services.shared.core.models import ProjectType
+from services.shared.core.schemas import ProjectConfig
 from .detectors import (
     NodeJSDetector,
     PythonDetector,

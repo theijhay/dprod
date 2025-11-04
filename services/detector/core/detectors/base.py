@@ -4,7 +4,8 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Optional
 
-from services.shared.core.models import ProjectType, ProjectConfig
+from services.shared.core.models import ProjectType
+from services.shared.core.schemas import ProjectConfig
 
 
 class BaseDetector(ABC):
