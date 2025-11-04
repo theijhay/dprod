@@ -7,7 +7,8 @@ from pathlib import Path
 from typing import Dict, Any, Optional, List
 from datetime import datetime
 
-from services.shared.core.models import Project, ProjectConfig
+from services.shared.core.models import Project
+from services.shared.core.schemas import ProjectConfig
 from services.shared.core.exceptions import ContainerError, ResourceLimitError
 
 

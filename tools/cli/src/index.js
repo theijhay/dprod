@@ -5,6 +5,7 @@ const { version } = require('../package.json');
 
 // Import commands
 const deployCommand = require('./commands/deploy');
+const registerCommand = require('./commands/register');
 const loginCommand = require('./commands/login');
 const logoutCommand = require('./commands/logout');
 const statusCommand = require('./commands/status');
@@ -18,6 +19,7 @@ program
   .description('Zero-configuration deployment platform - deploy any project with one command')
   .version(version, '-v, --version', 'Output the current version')
   .addCommand(deployCommand)
+  .addCommand(registerCommand)
   .addCommand(loginCommand)
   .addCommand(logoutCommand)
   .addCommand(statusCommand)

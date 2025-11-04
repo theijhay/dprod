@@ -1,50 +1,53 @@
 const { Command } = require('commander');
+const inquirer = require('inquirer');
 const auth = require('../lib/auth');
-const { openBrowser } = require('../lib/utils/browser');
+const logger = require('../lib/logger');
 
 async function loginAction(options) {
   try {
     if (options.token) {
-      // Direct token authentication
+      // Direct token authentication (API key)
+      logger.info('Authenticating with token...');
       await auth.loginWithToken(options.token);
-      console.log('✅ Logged in successfully with token!');
+      logger.success('✅ Logged in successfully with token!');
       return;
     }
 
-    if (options.email) {
-      // Email-based authentication flow
-      console.log('📧 Starting email authentication...');
-      const result = await auth.loginWithEmail(options.email);
-      
-      if (result.verificationRequired) {
-        console.log('📨 Check your email for verification link');
-      } else {
-        console.log('✅ Logged in successfully!');
+    // Interactive email/password login
+    logger.info('📧 Login to Dprod');
+    
+    const credentials = await inquirer.prompt([
+      {
+        type: 'input',
+        name: 'email',
+        message: 'Email address:',
+        validate: email => /.+@.+\..+/.test(email) || 'Please enter a valid email'
+      },
+      {
+        type: 'password',
+        name: 'password',
+        message: 'Password:',
+        mask: '*',
+        validate: password => password.length >= 8 || 'Password must be at least 8 characters'
       }
-      return;
-    }
+    ]);
 
-    // Interactive browser-based login (default)
-    console.log('🔗 Opening browser for authentication...');
-    const loginUrl = await auth.getLoginUrl();
+    logger.info('Logging in...');
+    const result = await auth.loginWithPassword(credentials.email, credentials.password);
     
-    await openBrowser(loginUrl);
-    console.log('💻 Please complete authentication in your browser...');
-    
-    // Poll for authentication completion
-    const user = await auth.waitForAuthentication();
-    console.log(`✅ Logged in as ${user.email}!`);
+    logger.success(`✅ Logged in as ${result.user.email}!`);
+    logger.info(`🔑 Your API key: ${result.token.api_key}`);
+    logger.info('💡 You can also login with: dprod login --token <your-api-key>');
 
   } catch (error) {
-    console.error(`❌ Login failed: ${error.message}`);
+    logger.error(`❌ Login failed: ${error.message}`);
     process.exit(1);
   }
 }
 
 const loginCommand = new Command('login')
   .description('Authenticate with Dprod')
-  .option('-t, --token <token>', 'Authenticate with API token')
-  .option('-e, --email <email>', 'Login with email')
+  .option('-t, --token <token>', 'Authenticate with API token/key')
   .action(loginAction);
 
 module.exports = loginCommand;
