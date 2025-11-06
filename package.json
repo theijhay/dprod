@@ -8,13 +8,28 @@
     "tools/frontend"
   ],
   "scripts": {
-    "dev": "docker-compose up --build",
-    "dev:api": "cd services/api && python -m uvicorn core.main:app --reload --host 0.0.0.0 --port 8000",
-    "dev:cli": "cd tools/cli && npm run dev",
+    "dev": "concurrently -n api,cli -c blue,green \"npm:dev:api\" \"npm:dev:cli\"",
+    "dev:all": "concurrently -n api,cli,frontend -c blue,green,magenta \"npm:dev:api\" \"npm:dev:cli\" \"npm:dev:frontend\"",
+    "dev:api": "cd $INIT_CWD && PYTHONPATH=$INIT_CWD poetry run python -m uvicorn services.api.core.main:app --reload --host 0.0.0.0 --port 8000",
+    "dev:detector": "cd $INIT_CWD && PYTHONPATH=$INIT_CWD poetry run python -m services.detector.core.detector",
+    "dev:orchestrator": "cd $INIT_CWD && PYTHONPATH=$INIT_CWD poetry run python -m services.orchestrator.core.deployment_manager",
+    "dev:cli": "cd tools/cli && npm link",
     "dev:frontend": "cd tools/frontend && npm run dev",
-    "test": "pytest",
-    "lint": "black . && isort . && flake8 .",
-    "setup": "./scripts/setup-dev.sh"
+    "start": "npm run dev",
+    "docker:up": "docker-compose up --build",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
+    "db:migrate": "poetry run alembic upgrade head",
+    "db:migrate:create": "poetry run alembic revision --autogenerate -m",
+    "db:reset": "poetry run alembic downgrade base && poetry run alembic upgrade head",
+    "test": "poetry run pytest",
+    "test:api": "cd services/api && poetry run pytest",
+    "test:detector": "cd services/detector && poetry run pytest",
+    "test:orchestrator": "cd services/orchestrator && poetry run pytest",
+    "test:cli": "cd tools/cli && npm test",
+    "lint": "poetry run black . && poetry run isort . && poetry run flake8 .",
+    "lint:fix": "poetry run black . && poetry run isort .",
+    "clean": "docker-compose down -v && find . -type d -name __pycache__ -exec rm -rf {} + && find . -type d -name node_modules -exec rm -rf {} + && find . -type d -name .pytest_cache -exec rm -rf {} +"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
