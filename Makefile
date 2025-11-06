@@ -1,29 +1,23 @@
-.PHONY: help dev dev-all dev-api dev-detector dev-orchestrator dev-cli dev-frontend test clean docker-up docker-down
+.PHONY: help dev dev-all dev-api dev-cli dev-frontend test clean docker-up docker-down
 
 help: ## Show this help message
 	@echo "Dprod - Zero-configuration Deployment Platform"
 	@echo ""
 	@echo "Quick Start:"
-	@echo "  make dev          - Start API + CLI in development mode"
+	@echo "  make dev          - Start API + CLI (detector & orchestrator run inside API)"
 	@echo "  npm run dev       - Same as 'make dev'"
 	@echo ""
 	@echo "Available Commands:"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
-dev: ## Start API + CLI services
+dev: ## Start all services (API includes detector & orchestrator)
 	npm run dev
 
-dev-all: ## Start all services (API + CLI + Frontend)
+dev-all: ## Start all services including frontend
 	npm run dev:all
 
-dev-api: ## Start API server only
+dev-api: ## Start API server (includes detector & orchestrator)
 	npm run dev:api
-
-dev-detector: ## Start detector service only
-	npm run dev:detector
-
-dev-orchestrator: ## Start orchestrator service only
-	npm run dev:orchestrator
 
 dev-cli: ## Link CLI globally for development
 	npm run dev:cli
