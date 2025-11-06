@@ -1,60 +1,68 @@
-.PHONY: help setup dev test lint clean build
+.PHONY: help dev dev-all dev-api dev-cli dev-frontend test clean docker-up docker-down
 
 help: ## Show this help message
-	@echo "Dprod Development Commands:"
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
+	@echo "Dprod - Zero-configuration Deployment Platform"
+	@echo ""
+	@echo "Quick Start:"
+	@echo "  make dev          - Start API + CLI (detector & orchestrator run inside API)"
+	@echo "  npm run dev       - Same as 'make dev'"
+	@echo ""
+	@echo "Available Commands:"
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
-setup: ## Set up development environment
-	@echo "Setting up Dprod development environment..."
-	@./scripts/setup-dev.sh
+dev: ## Start all services (API includes detector & orchestrator)
+	npm run dev
 
-dev: ## Start development environment
-	@echo "Starting Dprod development environment..."
-	@docker-compose up --build
+dev-all: ## Start all services including frontend
+	npm run dev:all
 
-dev-api: ## Start API server only
-	@echo "Starting API server..."
-	@poetry run uvicorn services.api.core.main:app --reload --host 0.0.0.0 --port 8000
+dev-api: ## Start API server (includes detector & orchestrator)
+	npm run dev:api
 
-dev-cli: ## Start CLI development
-	@echo "Starting CLI development..."
-	@cd tools/cli && npm run dev
+dev-cli: ## Link CLI globally for development
+	npm run dev:cli
 
-dev-frontend: ## Start frontend development
-	@echo "Starting frontend development..."
-	@cd tools/frontend && npm run dev
+dev-frontend: ## Start frontend development server
+	npm run dev:frontend
+
+docker-up: ## Start all services with Docker Compose
+	npm run docker:up
+
+docker-down: ## Stop Docker Compose services
+	npm run docker:down
+
+migrate: ## Run database migrations
+	npm run db:migrate
+
+migrate-create: ## Create new migration (usage: make migrate-create MSG="message")
+	npm run db:migrate:create "$(MSG)"
 
 test: ## Run all tests
-	@echo "Running tests..."
-	@pytest
+	npm run test
 
-test-api: ## Run API tests
-	@echo "Running API tests..."
-	@cd services/api && pytest
+test-api: ## Run API tests only
+	npm run test:api
 
-test-cli: ## Run CLI tests
-	@echo "Running CLI tests..."
-	@cd tools/cli && npm test
+test-detector: ## Run detector tests only
+	npm run test:detector
 
-lint: ## Run linting
-	@echo "Running linting..."
-	@black .
-	@isort .
-	@flake8 .
+test-orchestrator: ## Run orchestrator tests only
+	npm run test:orchestrator
 
-clean: ## Clean up development environment
-	@echo "Cleaning up..."
-	@docker-compose down -v
-	@docker system prune -f
+test-cli: ## Run CLI tests only
+	npm run test:cli
 
-build: ## Build all packages
-	@echo "Building all packages..."
-	@cd services/api && poetry run python -m build
-	@cd tools/cli && npm run build
-	@cd tools/frontend && npm run build
+lint: ## Run code linting
+	npm run lint
+
+lint-fix: ## Auto-fix linting issues
+	npm run lint:fix
+
+clean: ## Clean up everything (Docker, cache, etc.)
+	npm run clean
 
 install: ## Install all dependencies
-	@echo "Installing dependencies..."
+	@echo "Installing Python dependencies..."
 	@poetry install
-	@cd tools/cli && npm install
-	@cd tools/frontend && npm install
+	@echo "Installing Node.js dependencies..."
+	@npm install
