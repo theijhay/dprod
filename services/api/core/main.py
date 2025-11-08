@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
 from .utils.config import settings
-from .v1.routes import auth, projects, deployments, health
+from .v1.routes import auth, projects, deployments, health, ai
 
 
 @asynccontextmanager
@@ -57,6 +57,7 @@ app.include_router(health.router, prefix="/health", tags=["health"])
 app.include_router(auth.router, prefix="/auth", tags=["authentication"])
 app.include_router(projects.router, prefix="/projects", tags=["projects"])
 app.include_router(deployments.router, prefix="/deployments", tags=["deployments"])
+app.include_router(ai.router, prefix="/api/v1", tags=["ai-monitoring"])
 
 
 def main() -> None:
