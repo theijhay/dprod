@@ -85,6 +85,16 @@ dprod deploy
 
 Dprod integrates **production-ready AI agents** that revolutionize deployment automation:
 
+### **Powered by OmniCoreAgent** 🤖
+
+Dprod uses **OmniCoreAgent**, a complete AI development platform that provides:
+
+- **🛠️ Custom AI Tools** - Register Python functions as intelligent tools
+- **🧠 Multi-Tier Memory** - Vector databases, Redis, PostgreSQL for learning
+- **📡 Real-Time Events** - Live monitoring and streaming
+- **🚁 Background Agents** - Autonomous 24/7 task execution
+- **🔧 Production-Ready** - Error handling, retry logic, observability built-in
+
 ### **How Our AI Works**
 
 1. **Project Analyzer Agent** 🔍
@@ -344,7 +354,15 @@ make test-api         # API tests only
 - [API Reference](DOCS.md#-api-reference) - REST API documentation
 - [CLI Reference](DOCS.md#-cli-reference) - Command-line interface guide
 
-### **🤖 AI Documentation (NEW)**
+### **AI Documentation**
+- **[OmniCore Integration Guide](./OMNICORE_INTEGRATION.md)** - Complete integration documentation
+  - Installation and setup
+  - API endpoints and usage
+  - Background agents configuration
+  - Custom tools development
+  - Monitoring and observability
+  - Troubleshooting guide
+  
 - **[AI Agent README](./AI_AGENT_README.md)** - Complete AI system guide
   - AI architecture and components
   - Project Analyzer Agent usage
@@ -358,6 +376,13 @@ make test-api         # API tests only
   - Multi-layer verification system
   - Continuous learning architecture
   - Phase-by-phase implementation roadmap
+
+- **[OmniCoreAgent Documentation](./Omnicoreagent.md)** - Full OmniCoreAgent docs
+  - Platform overview and capabilities
+  - Tool system and workflows
+  - Background agent system
+  - Memory and event management
+  - MCP integration
 
 ### **AI API Endpoints**
 ```bash

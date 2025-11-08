@@ -111,12 +111,66 @@ class ProjectAnalyzerAgent:
     
     async def _ai_analyze(self, context: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Use AI agent to analyze the project.
-        This is a placeholder for OpenAI/Claude/OmniCore integration.
+        Use OmniCoreAgent to analyze the project with AI intelligence.
+        Falls back to rule-based analysis if OmniCoreAgent is not available.
         """
-        # TODO: Integrate with actual AI service (OmniCore provider)
-        # For now, I use enhanced rule-based analysis with AI-like structure
-        return await self._rule_based_analyze(context)
+        import os
+        
+        # Check if OmniCoreAgent integration is enabled
+        ai_enabled = os.getenv("AI_ENABLED", "false").lower() == "true"
+        fallback_enabled = os.getenv("AI_FALLBACK_TO_RULES", "true").lower() == "true"
+        
+        if not ai_enabled:
+            print("ℹ️  AI is disabled. Using rule-based analysis.")
+            return await self._rule_based_analyze(context)
+        
+        try:
+            # Import and use OmniCoreAgent
+            from .omnicore_service import DprodOmniAgentService
+            
+            print("🤖 Using OmniCoreAgent for intelligent project analysis...")
+            
+            # Initialize OmniAgent service
+            omni_service = DprodOmniAgentService(self.db_session)
+            
+            # Analyze project with AI
+            omni_result = await omni_service.analyze_project(
+                project_path=context.get('project_path'),
+                session_id=context.get('session_id')
+            )
+            
+            # Parse OmniAgent response into dprod format
+            parsed_result = omni_service.parse_omniagent_response(omni_result)
+            
+            # Structure the response for dprod
+            return {
+                'decision': {
+                    'framework': parsed_result.get('detected_framework', 'unknown'),
+                    'confidence': parsed_result.get('confidence_score', 0.5),
+                    'build_config': parsed_result.get('build_configuration', {}),
+                    'runtime_config': parsed_result.get('runtime_configuration', {}),
+                    'resource_requirements': parsed_result.get('resource_requirements', {}),
+                    'detected_issues': parsed_result.get('detected_issues', []),
+                    'optimization_suggestions': parsed_result.get('optimization_suggestions', []),
+                    'ai_provider': 'omnicoreagent'
+                },
+                'confidence_score': parsed_result.get('confidence_score', 0.5),
+                'tools_used': ['omnicoreagent', 'project_analyzer_tools'],
+                'raw_response': omni_result,
+                'token_usage': parsed_result.get('tokens_used', 0)
+            }
+        except ImportError:
+            if fallback_enabled:
+                print("   Falling back to rule-based analysis...")
+                return await self._rule_based_analyze(context)
+            raise Exception("OmniCoreAgent not installed and fallback is disabled")
+            
+        except Exception as e:
+            print(f"⚠️  OmniAgent analysis failed: {str(e)}")
+            if fallback_enabled:
+                print("   Falling back to rule-based analysis...")
+                return await self._rule_based_analyze(context)
+            raise
     
     async def _rule_based_analyze(self, context: Dict[str, Any]) -> Dict[str, Any]:
         """
