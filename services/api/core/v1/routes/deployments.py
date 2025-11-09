@@ -12,7 +12,9 @@ from services.shared.core.models import Project, Deployment, User
 from services.shared.core.schemas import DeploymentCreate, DeploymentResponse
 
 router = APIRouter()
-deployment_service = DeploymentService()
+
+# Note: deployment_service is created per-request to inject DB session
+# deployment_service = DeploymentService()  # OLD: shared instance
 
 
 @router.post("/projects/{project_id}/deployments", response_model=DeploymentResponse)
@@ -23,6 +25,8 @@ async def create_deployment(
     db: AsyncSession = Depends(get_db)
 ):
     """Create a new deployment for a project."""
+    # Create deployment service with DB session for AI-enhanced detection
+    deployment_service = DeploymentService(db_session=db)
     # Verify project ownership
     result = await db.execute(
         select(Project).where(

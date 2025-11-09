@@ -33,7 +33,7 @@ class DeploymentManager:
         Args:
             project: Project database model
             source_code: Compressed source code bytes
-            detection_engine: Project detection engine
+            detection_engine: Project detection engine (can be AI-enhanced)
             
         Returns:
             Dict containing deployment information
@@ -49,7 +49,37 @@ class DeploymentManager:
                 await self._extract_source_code(source_code, build_context)
                 
                 # Detect project type and generate config
-                config = detection_engine.detect_project(build_context)
+                # Check if this is an AI-enhanced detector
+                is_ai_detector = hasattr(detection_engine, 'detect_project') and \
+                                asyncio.iscoroutinefunction(detection_engine.detect_project)
+                
+                if is_ai_detector:
+                    # AI-enhanced detection (async)
+                    detection_result = await detection_engine.detect_project(
+                        build_context,
+                        project_id=str(project.id),
+                        use_ai=True
+                    )
+                    
+                    if not detection_result:
+                        raise DeploymentError("Could not detect project type")
+                    
+                    # Extract recommended config from AI result
+                    config = detection_result.get('recommended_config') or \
+                             detection_result.get('config') or \
+                             detection_result.get('rule_based_config')
+                    
+                    decision_id = detection_result.get('decision_id')
+                    ai_verified = detection_result.get('ai_verified', False)
+                    
+                    if ai_verified:
+                        print(f"🤖 AI-enhanced detection used (decision_id: {decision_id})")
+                else:
+                    # Rule-based detection (sync)
+                    config = detection_engine.detect_project(build_context)
+                    decision_id = None
+                    ai_verified = False
+                
                 if not config:
                     raise DeploymentError("Could not detect project type")
                 
@@ -95,12 +125,27 @@ class DeploymentManager:
                     "url": url,
                     "ports": container_info.get("ports", {}),
                     "created_at": container_info.get("created"),
-                    "config": config.dict()
+                    "config": config.dict() if hasattr(config, 'dict') else config,
+                    "ai_verified": ai_verified,
+                    "decision_id": decision_id  # For outcome verification
                 }
                 
                 self.active_deployments[str(project.id)] = deployment_info
                 
                 print(f"✅ Deployment successful: {deployment_info['url']}")
+                
+                # Verify AI decision outcome if applicable
+                if is_ai_detector and decision_id:
+                    try:
+                        await detection_engine.verify_deployment_outcome(
+                            decision_id=decision_id,
+                            was_successful=True,
+                            feedback="Deployment completed successfully"
+                        )
+                        print(f"📊 AI decision outcome logged")
+                    except Exception as e:
+                        print(f"⚠️  Failed to log AI outcome: {e}")
+                
                 return deployment_info
                 
         except Exception as e:

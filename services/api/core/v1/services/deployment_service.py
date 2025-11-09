@@ -2,7 +2,8 @@
 
 import asyncio
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, Optional
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from services.shared.core.models import Project, Deployment, DeploymentStatus
 from services.shared.core.exceptions import DeploymentError
@@ -12,15 +13,38 @@ import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../../../..'))
 from services.detector.core.detector import ProjectDetector
+from services.detector.core.ai_detector import AIEnhancedDetector
 from services.orchestrator.core.deployment_manager import DeploymentManager
 
 
 class DeploymentService:
     """Service that orchestrates the complete deployment process."""
     
-    def __init__(self):
-        """Initialize deployment service."""
-        self.detector = ProjectDetector()
+    def __init__(self, db_session: Optional[AsyncSession] = None):
+        """
+        Initialize deployment service.
+        
+        Args:
+            db_session: Optional database session for AI-enhanced detection
+        """
+        self.db_session = db_session
+        
+        # Use AI-enhanced detector if:
+        # 1. DB session is available
+        # 2. AI_ENABLED environment variable is true
+        ai_enabled = os.getenv("AI_ENABLED", "false").lower() == "true"
+        
+        if db_session and ai_enabled:
+            print("🤖 AI-enhanced detection enabled")
+            self.detector = AIEnhancedDetector(db_session)
+            self.use_ai = True
+        else:
+            if not ai_enabled:
+                print("ℹ️  AI detection disabled (set AI_ENABLED=true to enable)")
+            print("🔍 Using rule-based detection")
+            self.detector = ProjectDetector()
+            self.use_ai = False
+            
         # Defer creating DeploymentManager (requires local Docker) until used
         self.deployment_manager = None
     
