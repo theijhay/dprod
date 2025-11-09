@@ -201,7 +201,7 @@ class DprodOmniAgentService:
         @registry.register_tool("analyze_resource_usage")
         def analyze_resource_usage(deployment_id: str) -> str:
             """
-            Analyze resource usage for a deployment.
+            Analyze resource usage for a deployment using Docker stats.
             
             Args:
                 deployment_id: UUID of the deployment
@@ -209,15 +209,146 @@ class DprodOmniAgentService:
             Returns:
                 Resource usage analysis with optimization suggestions
             """
-            # TODO: Integrate with Docker stats
-            return json.dumps({
-                "cpu_usage": "45%",
-                "memory_usage": "320MB/512MB",
-                "suggestions": [
-                    "Memory usage is optimal",
-                    "Consider reducing CPU allocation to 0.5 cores"
-                ]
-            })
+            from services.shared.core.models import Deployment, Project
+            import docker
+            
+            try:
+                # Get deployment from database with project info
+                deployment = self.db_session.query(Deployment).filter_by(
+                    id=deployment_id
+                ).first()
+                
+                if not deployment:
+                    return json.dumps({"error": "Deployment not found"})
+                
+                # Get project info
+                project = self.db_session.query(Project).filter_by(
+                    id=deployment.project_id
+                ).first()
+                
+                if not project:
+                    return json.dumps({"error": "Project not found"})
+                
+                # Connect to Docker
+                client = docker.from_env()
+                
+                # Find container by project_id label (set by docker_manager.py)
+                containers = client.containers.list(
+                    filters={"label": f"project_id={deployment.project_id}"}
+                )
+                
+                if not containers:
+                    # Fallback: try by project name
+                    containers = client.containers.list(
+                        filters={"label": f"project={project.name}"}
+                    )
+                
+                if not containers:
+                    return json.dumps({
+                        "error": "Container not found",
+                        "deployment_id": deployment_id,
+                        "project_id": str(deployment.project_id),
+                        "project_name": project.name,
+                        "hint": "Container may have stopped or not yet started"
+                    })
+                
+                # Use the first matching container (should only be one per project)
+                container = containers[0]
+                
+                # Get container stats (stream=False for single snapshot)
+                stats = container.stats(stream=False)
+                
+                # Calculate CPU percentage
+                cpu_delta = stats['cpu_stats']['cpu_usage']['total_usage'] - \
+                           stats['precpu_stats']['cpu_usage']['total_usage']
+                system_delta = stats['cpu_stats']['system_cpu_usage'] - \
+                              stats['precpu_stats']['system_cpu_usage']
+                cpu_count = stats['cpu_stats']['online_cpus']
+                cpu_percent = (cpu_delta / system_delta) * cpu_count * 100.0 if system_delta > 0 else 0.0
+                
+                # Calculate Memory usage
+                memory_usage = stats['memory_stats']['usage']
+                memory_limit = stats['memory_stats']['limit']
+                memory_percent = (memory_usage / memory_limit) * 100.0 if memory_limit > 0 else 0.0
+                memory_usage_mb = memory_usage / (1024 * 1024)
+                memory_limit_mb = memory_limit / (1024 * 1024)
+                
+                # Network I/O
+                network_stats = stats.get('networks', {})
+                network_rx_mb = sum(net['rx_bytes'] for net in network_stats.values()) / (1024 * 1024)
+                network_tx_mb = sum(net['tx_bytes'] for net in network_stats.values()) / (1024 * 1024)
+                
+                # Block I/O
+                block_stats = stats.get('blkio_stats', {}).get('io_service_bytes_recursive', [])
+                block_read_mb = sum(item['value'] for item in block_stats if item['op'] == 'Read') / (1024 * 1024) if block_stats else 0
+                block_write_mb = sum(item['value'] for item in block_stats if item['op'] == 'Write') / (1024 * 1024) if block_stats else 0
+                
+                # Generate AI-powered suggestions
+                suggestions = []
+                
+                # CPU optimization
+                if cpu_percent < 10:
+                    suggestions.append(f"Low CPU usage ({cpu_percent:.1f}%) - Consider reducing CPU allocation to save costs")
+                elif cpu_percent > 80:
+                    suggestions.append(f"High CPU usage ({cpu_percent:.1f}%) - Consider increasing CPU allocation for better performance")
+                else:
+                    suggestions.append(f"CPU usage is optimal ({cpu_percent:.1f}%)")
+                
+                # Memory optimization
+                if memory_percent < 30:
+                    suggestions.append(f"Low memory usage ({memory_percent:.1f}%) - Consider reducing memory limit from {memory_limit_mb:.0f}MB")
+                elif memory_percent > 85:
+                    suggestions.append(f"High memory usage ({memory_percent:.1f}%) - Consider increasing memory limit to prevent OOM")
+                else:
+                    suggestions.append(f"Memory usage is optimal ({memory_percent:.1f}%)")
+                
+                # Network usage insights
+                if network_rx_mb + network_tx_mb > 100:
+                    suggestions.append(f"High network activity ({network_rx_mb + network_tx_mb:.1f}MB transferred) - Consider CDN for static assets")
+                
+                return json.dumps({
+                    "deployment_id": deployment_id,
+                    "container_name": container.name,
+                    "status": container.status,
+                    "cpu": {
+                        "usage_percent": round(cpu_percent, 2),
+                        "cpu_count": cpu_count,
+                        "status": "high" if cpu_percent > 80 else "low" if cpu_percent < 10 else "optimal"
+                    },
+                    "memory": {
+                        "usage_mb": round(memory_usage_mb, 2),
+                        "limit_mb": round(memory_limit_mb, 2),
+                        "usage_percent": round(memory_percent, 2),
+                        "status": "high" if memory_percent > 85 else "low" if memory_percent < 30 else "optimal"
+                    },
+                    "network": {
+                        "rx_mb": round(network_rx_mb, 2),
+                        "tx_mb": round(network_tx_mb, 2),
+                        "total_mb": round(network_rx_mb + network_tx_mb, 2)
+                    },
+                    "disk_io": {
+                        "read_mb": round(block_read_mb, 2),
+                        "write_mb": round(block_write_mb, 2)
+                    },
+                    "suggestions": suggestions,
+                    "cost_optimization": {
+                        "current_cost_estimate": f"${(memory_limit_mb / 1024) * 0.01:.4f}/hour",
+                        "potential_savings": f"${(memory_limit_mb / 1024) * 0.01 * 0.3:.4f}/hour" if memory_percent < 30 else "None"
+                    }
+                }, indent=2)
+                
+            except docker.errors.DockerException as e:
+                return json.dumps({
+                    "error": "Docker connection failed",
+                    "message": str(e),
+                    "deployment_id": deployment_id
+                })
+            except Exception as e:
+                return json.dumps({
+                    "error": "Failed to analyze resource usage",
+                    "message": str(e),
+                    "deployment_id": deployment_id
+                })
     
     async def create_project_analyzer_agent(self):
         """Create the main project analyzer agent with OmniCoreAgent."""
