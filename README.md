@@ -6,7 +6,7 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Node.js 18+](https://img.shields.io/badge/node.js-18+-green.svg)](https://nodejs.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-005571?logo=fastapi)](https://fastapi.tiangolo.com/)
-[![Docker](https://img.shields.io/badge/Docker-2496ED?logo=dIntegrate AI agents into dprodocker&logoColor=white)](https://www.docker.com/)
+[![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 [![AI Powered](https://img.shields.io/badge/AI-Powered-ff69b4?logo=openai)](https://github.com/theijhay/dprod)
 
 ---
@@ -269,8 +269,6 @@ export OLLAMA_BASE_URL=http://localhost:11434
 | **Confidence Scores** | No | Yes (85-98%) |
 | **Setup Required** | None | API key only |
 
-**[Complete AI Documentation →](./docs/OMNICORE.md)**
-
 ---
 
 ## 🎯 **Supported Project Types**
@@ -419,15 +417,6 @@ make test-api         # API tests only
 - [Full Documentation](DOCS.md) - Comprehensive guide to Dprod
 - [API Reference](DOCS.md#-api-reference) - REST API documentation
 - [CLI Reference](DOCS.md#-cli-reference) - Command-line interface guide
-
-### **AI Documentation**
-
-- **[OmniCoreAgent Documentation](https://github.com/Abiorh001/omnicoreagent/blob/main/README.md)** - Full OmniCoreAgent docs
-  - Platform overview and capabilities
-  - Tool system and workflows
-  - Background agent system
-  - Memory and event management
-  - MCP integration
 
 ### **AI API Endpoints**
 ```bash
