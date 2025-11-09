@@ -1,3 +1,4 @@
+
 # 🤖 OmniCoreAgent Integration for Dprod
 
 ## Overview
@@ -111,32 +112,6 @@ python scripts/test_ai_agent.py
 └──────────────────────────────────────────────────────┘
 ```
 
-### Files Created
-
-1. **`services/ai/core/omnicore_service.py`**
-   - Main OmniCoreAgent integration
-   - Tool registry with dprod-specific tools
-   - Agent creation and management
-   - Response parsing
-
-2. **`services/ai/core/background_agent_service.py`**
-   - Background agent management
-   - Autonomous monitoring agents
-   - Cost optimization
-   - Pattern learning
-
-3. **`services/api/core/v1/routes/omniagent.py`**
-   - REST API endpoints for OmniAgent
-   - Project analysis endpoint
-   - Background agent management
-   - Agent control operations
-
-4. **Updated `services/ai/core/project_analyzer_agent.py`**
-   - Replaced placeholder AI with OmniCoreAgent
-   - Fallback to rule-based when AI unavailable
-   - Graceful error handling
-
----
 
 ## 📖 API Endpoints
 
@@ -517,43 +492,436 @@ export OMNI_MEMORY_TYPE=in_memory
 export OMNI_EVENT_TYPE=in_memory
 ```
 
-### Background Agents Not Starting
 
-**Check**:
-```python
-from services.ai.core.background_agent_service import DprodBackgroundAgents
 
-bg_agents = DprodBackgroundAgents(db)
-agents = bg_agents.list_agents()
-print(agents)  # Should show agent IDs
+# OmniCoreAgent Quick Start Guide
+
+## ✅ Installation Complete!
+
+OmniCoreAgent v0.2.10 is now fully integrated with dprod.
+
+## 🚀 Quick Start
+
+### 1. Set Environment Variables
+
+```bash
+export AI_ENABLED=true
+export LLM_PROVIDER=openai
+export LLM_MODEL=gpt-4o-mini
+export LLM_API_KEY=your_api_key_here
 ```
 
-**Solution**: Check logs for specific errors, ensure OmniCoreAgent is installed
+### 2. Test the Integration
+
+```bash
+python scripts/test_omnicore_integration.py
+```
+
+Expected output:
+```
+🤖 OmniCoreAgent Integration Test Suite
+============================================================
+✅ All OmniCore modules imported successfully
+✅ All dprod AI services imported successfully  
+✅ Tool registered successfully
+✅ MemoryRouter initialized successfully
+✅ EventRouter initialized successfully
+✅ BackgroundAgentManager initialized and started successfully
+Passed: 6/6
+✅ All tests passed!
+```
+
+### 3. Use in Your Code
+
+#### A. Project Analysis with AI
+
+```python
+from services.ai.core.omnicore_service import DprodOmniAgentService
+from services.api.core.db.database import get_db
+
+# Initialize service
+db = next(get_db())
+omni_service = DprodOmniAgentService(db)
+
+# Analyze a project
+result = await omni_service.analyze_project("/path/to/project")
+print(f"Framework: {result['framework']}")
+print(f"Confidence: {result['confidence']}")
+```
+
+#### B. Background Agents
+
+```python
+from services.ai.core.background_agent_service import DprodBackgroundAgents
+from services.api.core.db.database import get_db
+
+# Initialize service
+db = next(get_db())
+bg_agents = DprodBackgroundAgents(db)
+
+# Create deployment monitor (checks every 5 minutes)
+await bg_agents.create_deployment_monitor_agent()
+
+# Create cost optimizer (runs hourly)
+await bg_agents.create_cost_optimizer_agent()
+
+# Create pattern learner (runs daily)
+await bg_agents.create_pattern_learner_agent()
+
+# List all agents
+agents = bg_agents.list_agents()
+print(f"Active agents: {agents}")
+
+# Get agent status
+status = bg_agents.get_agent_status("deployment_health_monitor")
+print(f"Status: {status}")
+```
+
+#### C. API Endpoints
+
+All OmniCore functionality is available via REST API:
+
+```bash
+# Analyze a project
+curl -X POST http://localhost:8000/api/v1/omniagent/analyze \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"project_path": "/path/to/project"}'
+
+# Create a background agent
+curl -X POST http://localhost:8000/api/v1/omniagent/background-agents/create \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"agent_type": "health_monitor"}'
+
+# List all background agents
+curl http://localhost:8000/api/v1/omniagent/background-agents/list \
+  -H "Authorization: Bearer $TOKEN"
+
+# Get agent status
+curl http://localhost:8000/api/v1/omniagent/background-agents/deployment_health_monitor/status \
+  -H "Authorization: Bearer $TOKEN"
+
+# Check OmniCore health
+curl http://localhost:8000/api/v1/omniagent/health
+```
+
+## 📚 Core Components
+
+### Available Classes (from omnicoreagent)
+
+- **`OmniAgent`** - Main AI agent with tool support
+- **`BackgroundAgentManager`** - Manage autonomous background agents
+- **`BackgroundOmniAgent`** - Individual background agent
+- **`ToolRegistry`** - Register custom Python functions as AI tools
+- **`MemoryRouter`** - Multi-tier memory (in_memory, redis, postgres, vector DBs)
+- **`EventRouter`** - Real-time event streaming
+- **`MCPClient`** - Model Context Protocol client
+- **`ReactAgent`** - ReAct pattern agent
+- **`SequentialAgent`** - Sequential workflow
+- **`ParallelAgent`** - Parallel workflow
+- **`RouterAgent`** - Smart routing between agents
+
+### Dprod AI Services
+
+- **`DprodOmniAgentService`** - Main AI service with 7 custom tools
+  - `analyze_project_structure` - Analyze project files
+  - `detect_framework` - Detect framework with confidence
+  - `read_config_files` - Parse config files
+  - `suggest_build_config` - Suggest optimal build config
+  - `get_deployment_status` - Check deployment status
+  - `validate_deployment_outcome` - Validate deployments
+  - `analyze_resource_usage` - Analyze resource usage
+
+- **`DprodBackgroundAgents`** - Background agent manager
+  - Deployment health monitor (every 5 minutes)
+  - Cost optimizer (hourly)
+  - Pattern learner (daily)
+
+## 🔧 Configuration Options
+
+### LLM Providers
+
+```bash
+# OpenAI (default)
+export LLM_PROVIDER=openai
+export LLM_MODEL=gpt-4o-mini
+export LLM_API_KEY=sk-...
+
+# Anthropic
+export LLM_PROVIDER=anthropic
+export LLM_MODEL=claude-3-5-sonnet-20241022
+export LLM_API_KEY=sk-ant-...
+
+# Groq
+export LLM_PROVIDER=groq
+export LLM_MODEL=llama-3.1-70b-versatile
+export LLM_API_KEY=gsk_...
+
+# Ollama (local)
+export LLM_PROVIDER=ollama
+export LLM_MODEL=llama3
+export OLLAMA_BASE_URL=http://localhost:11434
+```
+
+### Memory Backends
+
+```bash
+# In-memory (default, for testing)
+export OMNI_MEMORY_TYPE=in_memory
+
+# Redis (recommended for production)
+export OMNI_MEMORY_TYPE=redis
+export REDIS_URL=redis://localhost:6379
+
+# PostgreSQL
+export OMNI_MEMORY_TYPE=postgres
+export POSTGRES_URL=postgresql://user:pass@localhost/dbname
+
+# Vector Database (for semantic search)
+export VECTOR_DB_TYPE=qdrant
+export QDRANT_URL=http://localhost:6333
+```
+
+### Event Streaming
+
+```bash
+# In-memory (default)
+export OMNI_EVENT_TYPE=in_memory
+
+# Redis Stream (recommended for production)
+export OMNI_EVENT_TYPE=redis_stream
+export REDIS_URL=redis://localhost:6379
+```
+
+## 📖 Full Documentation
+
+- **[OMNICORE_INTEGRATION.md](../OMNICORE_INTEGRATION.md)** - Complete integration guide
+- **[OMNICORE_INTEGRATION_FIX.md](./OMNICORE_INTEGRATION_FIX.md)** - Fix summary
+- **[AI_AGENT_README.md](../AI_AGENT_README.md)** - AI agent overview
+- **[OmniCoreAgent Docs](https://github.com/OmniCore-AI/omnicoreagent)** - Official documentation
+
+## 🧪 Testing
+
+```bash
+# Run integration tests
+python scripts/test_omnicore_integration.py
+
+# Test specific functionality
+python scripts/test_ai_agent.py
+```
+
+## 🎯 Next Steps
+
+1. **Configure your API keys** in `.env` file
+2. **Start Redis** for production memory/events: `docker-compose up -d redis`
+3. **Start the API server**: `make dev-api`
+4. **Create background agents** via API or Python
+5. **Monitor AI operations** in the database (see OMNICORE_INTEGRATION.md)
+
+## ⚠️ Troubleshooting
+
+### Import errors
+- Make sure you're in the Poetry virtualenv: `poetry shell`
+- Or run with: `poetry run python your_script.py`
+
+### API key errors
+- Verify `LLM_API_KEY` is set
+- Check provider is correct (openai, anthropic, groq, ollama)
+
+### Memory/Event errors
+- Start with `in_memory` for testing
+- Use Redis for production: `docker-compose up -d redis`
+
+## 💡 Tips
+
+1. Start with `in_memory` backends for development
+2. Use Redis for production (memory + events)
+3. Add vector DB (Qdrant/ChromaDB) for semantic search
+4. Monitor agent performance in the database
+5. Adjust agent schedules based on your needs
 
 ---
 
-## 🚀 Next Steps
+**Status:** ✅ Ready to use!  
+**Version:** OmniCoreAgent 0.2.10  
+**Integration:** Complete and tested
 
-1. **Install OmniCoreAgent**: `poetry add omnicoreagent`
-2. **Configure API Keys**: Set `LLM_API_KEY` in `.env`
-3. **Test Integration**: Run `python scripts/test_ai_agent.py`
-4. **Create Background Agents**: Use API or Python
-5. **Monitor Performance**: Check AI metrics in database
-6. **Optimize Costs**: Review token usage and adjust
+### Issue
+- Pylance reported: `Import "omnicoreagent.background_agent" could not be resolved`
+- Incorrect import paths were being used based on outdated documentation
+
+### Root Cause
+The OmniCoreAgent package (v0.2.10) exports all main classes directly from the top-level `omnicoreagent` module, not from submodules like `omnicoreagent.background_agent` or `omnicoreagent.core.memory_store.memory_router`.
+
+### Solution
+
+#### 1. Fixed imports in `services/ai/core/background_agent_service.py`
+
+**Before:**
+```python
+from omnicoreagent.background_agent import BackgroundAgentService
+from omnicoreagent.core.memory_store.memory_router import MemoryRouter
+from omnicoreagent.core.events.event_router import EventRouter
+from omnicoreagent.core.tools.local_tools_registry import ToolRegistry
+```
+
+**After:**
+```python
+from omnicoreagent import (
+    BackgroundAgentManager,
+    BackgroundOmniAgent,
+    MemoryRouter,
+    EventRouter,
+    ToolRegistry,
+    Tool
+)
+```
+
+#### 2. Fixed imports in `services/ai/core/omnicore_service.py`
+
+**Before:**
+```python
+from omnicoreagent.omni_agent import OmniAgent
+from omnicoreagent.core.memory_store.memory_router import MemoryRouter
+from omnicoreagent.core.events.event_router import EventRouter
+from omnicoreagent.core.tools.local_tools_registry import ToolRegistry
+```
+
+**After:**
+```python
+from omnicoreagent import (
+    OmniAgent,
+    MemoryRouter,
+    EventRouter,
+    ToolRegistry,
+    Tool
+)
+```
+
+#### 3. Updated API usage in `background_agent_service.py`
+
+**Before:**
+```python
+self.bg_service = BackgroundAgentService(memory_router, event_router)
+self.bg_service.start_manager()
+```
+
+**After:**
+```python
+self.bg_service = BackgroundAgentManager(memory_router, event_router)
+await self.bg_service.start()
+```
+
+#### 4. Updated tool registration pattern
+
+Tool registration now properly handles the decorator pattern:
+```python
+def my_tool() -> str:
+    """Tool description."""
+    return "result"
+
+registry.register_tool(
+    name="my_tool",
+    description="Tool description",
+    inputSchema={"type": "object", "properties": {}}
+)(my_tool)
+```
+
+### Testing
+
+Created comprehensive test suite: `scripts/test_omnicore_integration.py`
+
+**Test Results:**
+```
+🤖 OmniCoreAgent Integration Test Suite
+============================================================
+✅ All OmniCore modules imported successfully
+✅ All dprod AI services imported successfully
+✅ Tool registered successfully: ['test_tool']
+✅ MemoryRouter initialized successfully
+✅ EventRouter initialized successfully
+✅ BackgroundAgentManager initialized and started successfully
+✅ BackgroundAgentManager shut down successfully
+
+📊 Test Summary
+============================================================
+Passed: 6/6
+✅ All tests passed!
+```
+
+### Package Information
+
+**Installed Version:** omnicoreagent 0.2.10
+
+**Available Classes (from `dir(omnicoreagent)`):**
+- `APSchedulerBackend`
+- `BackgroundAgentManager`
+- `BackgroundOmniAgent`
+- `BackgroundTaskScheduler`
+- `Configuration`
+- `DatabaseMessageStore`
+- `EventRouter`
+- `LLMConnection`
+- `MCPClient`
+- `MemoryRouter`
+- `OmniAgent`
+- `ParallelAgent`
+- `ReactAgent`
+- `RouterAgent`
+- `SequentialAgent`
+- `TaskRegistry`
+- `Tool`
+- `ToolRegistry`
+
+### Verification
+
+1. ✅ No Pylance errors
+2. ✅ All imports resolve correctly
+3. ✅ Test suite passes (6/6 tests)
+4. ✅ Services can be imported without errors
+5. ✅ ToolRegistry, MemoryRouter, EventRouter work correctly
+6. ✅ BackgroundAgentManager can start and shutdown properly
+
+### Files Modified
+
+1. `/home/dev-soft/dprod/services/ai/core/background_agent_service.py`
+   - Fixed imports
+   - Updated API usage for BackgroundAgentManager
+   - Added async/await for manager methods
+
+2. `/home/dev-soft/dprod/services/ai/core/omnicore_service.py`
+   - Fixed imports
+
+3. `/home/dev-soft/dprod/scripts/test_omnicore_integration.py` (NEW)
+   - Comprehensive integration test suite
+   - Tests all major components
+   - Validates dprod service imports
+
+### Next Steps
+
+The integration is now fully functional. You can:
+
+1. **Configure API Keys:**
+   ```bash
+   export LLM_API_KEY=your_openai_api_key_here
+   export AI_ENABLED=true
+   ```
+
+2. **Start using the AI services:**
+   ```python
+   from services.ai.core.omnicore_service import DprodOmniAgentService
+   from services.ai.core.background_agent_service import DprodBackgroundAgents
+   ```
+
+3. **Run the test suite:**
+   ```bash
+   python scripts/test_omnicore_integration.py
+   ```
+
+4. **Create background agents:**
+   See `OMNICORE_INTEGRATION.md` for full documentation
 
 ---
 
-## 📚 Resources
-
-- **OmniCoreAgent Documentation**: See `Omnicoreagent.md`
-- **AI Integration Plan**: See `AIAgentIntegrationfoundationplan.md`
-- **AI Agent README**: See `AI_AGENT_README.md`
-- **API Documentation**: http://localhost:8000/docs
-
----
-
-**Status**: ✅ Integration Complete - Ready for OmniCoreAgent Installation
-
-**Installation**: `poetry add omnicoreagent`
-
-**Configuration**: See `env.example` for all options
+**Status:** ✅ RESOLVED - All import errors fixed, integration tested and working

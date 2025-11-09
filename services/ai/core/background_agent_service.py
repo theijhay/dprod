@@ -1,8 +1,12 @@
 """Background agents for autonomous dprod operations."""
-from omnicoreagent.background_agent import BackgroundAgentService
-from omnicoreagent.core.memory_store.memory_router import MemoryRouter
-from omnicoreagent.core.events.event_router import EventRouter
-from omnicoreagent.core.tools.local_tools_registry import ToolRegistry
+from omnicoreagent import (
+    BackgroundAgentManager,
+    BackgroundOmniAgent,
+    MemoryRouter,
+    EventRouter,
+    ToolRegistry,
+    Tool
+)
 import os
 import json
 
@@ -38,11 +42,11 @@ class DprodBackgroundAgents:
             self.event_router = EventRouter(
                 event_store_type=os.getenv("OMNI_EVENT_TYPE", "in_memory")
             )
-            self.bg_service = BackgroundAgentService(
+            self.bg_service = BackgroundAgentManager(
                 self.memory_router,
                 self.event_router
             )
-            self.bg_service.start_manager()
+            self.bg_service.start()
         except Exception as e:
             print(f"⚠️  Failed to initialize background agent service: {str(e)}")
     
@@ -50,7 +54,7 @@ class DprodBackgroundAgents:
         """Create tools for deployment monitoring."""
         tool_registry = ToolRegistry()
         
-        @tool_registry.register_tool("check_all_deployments")
+        # Define check_all_deployments function
         def check_all_deployments() -> str:
             """Check health of all active deployments."""
             from services.shared.core.models import Deployment
@@ -84,7 +88,14 @@ class DprodBackgroundAgents:
                 "deployments": results
             }, indent=2)
         
-        @tool_registry.register_tool("get_deployment_metrics")
+        # Register the tool using Tool class
+        tool_registry.register_tool(
+            name="check_all_deployments",
+            description="Check health of all active deployments",
+            inputSchema={"type": "object", "properties": {}}
+        )(check_all_deployments)
+        
+        # Define get_deployment_metrics function
         def get_deployment_metrics() -> str:
             """Get overall deployment metrics."""
             from services.shared.core.models import Deployment, AIAgentDecision
@@ -113,6 +124,13 @@ class DprodBackgroundAgents:
                 "ai_accuracy": f"{accuracy:.2%}",
                 "ai_decisions_evaluated": len(ai_decisions)
             }, indent=2)
+        
+        # Register the tool
+        tool_registry.register_tool(
+            name="get_deployment_metrics",
+            description="Get overall deployment metrics and AI accuracy",
+            inputSchema={"type": "object", "properties": {}}
+        )(get_deployment_metrics)
         
         return tool_registry
     
@@ -144,27 +162,36 @@ Report any unhealthy deployments immediately with detailed analysis.""",
                 "model": os.getenv("LLM_MODEL", "gpt-4o-mini"),
                 "temperature": 0.2
             },
-            "agent_config": {
-                "max_steps": 10,
-                "tool_call_timeout": 60
-            },
-            "interval": 300,  # 5 minutes in seconds
-            "task_config": {
-                "query": "Check all deployments and report any unhealthy ones. Analyze patterns and suggest fixes.",
-                "schedule": "every 5 minutes",
-                "interval": 300,
-                "max_retries": 2,
-                "retry_delay": 30
-            },
+            "max_steps": 10,
+            "tool_call_timeout": 60,
             "local_tools": tool_registry
         }
         
+        task_config = {
+            "query": "Check all deployments and report any unhealthy ones. Analyze patterns and suggest fixes.",
+            "schedule": "interval",
+            "interval_seconds": 300,  # 5 minutes
+            "max_retries": 2,
+            "retry_delay": 30
+        }
+        
         try:
-            result = await self.bg_service.create(agent_config)
+            # Create the agent
+            result = self.bg_service.create_agent(agent_config)
             print(f"✅ Deployment health monitor created: {result}")
+            
+            # Register task
+            self.bg_service.register_task("deployment_health_monitor", task_config)
+            
+            # Start the agent
+            self.bg_service.start_agent("deployment_health_monitor")
+            print(f"✅ Deployment health monitor started")
+            
             return result
         except Exception as e:
             print(f"⚠️  Failed to create deployment monitor: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return None
     
     async def create_cost_optimizer_agent(self):
@@ -194,25 +221,30 @@ Run hourly analysis and provide actionable recommendations.""",
                 "model": os.getenv("LLM_MODEL", "gpt-4o-mini"),
                 "temperature": 0.3
             },
-            "agent_config": {
-                "max_steps": 15,
-                "tool_call_timeout": 90
-            },
-            "interval": 3600,  # 1 hour
-            "task_config": {
-                "query": "Analyze deployment costs and suggest optimizations. Identify over-provisioned resources.",
-                "schedule": "every hour",
-                "interval": 3600
-            },
+            "max_steps": 15,
+            "tool_call_timeout": 90,
             "local_tools": tool_registry
         }
         
+        task_config = {
+            "query": "Analyze deployment costs and suggest optimizations. Identify over-provisioned resources.",
+            "schedule": "interval",
+            "interval_seconds": 3600,  # 1 hour
+        }
+        
         try:
-            result = await self.bg_service.create(agent_config)
+            result = self.bg_service.create_agent(agent_config)
             print(f"✅ Cost optimizer created: {result}")
+            
+            self.bg_service.register_task("cost_optimizer", task_config)
+            self.bg_service.start_agent("cost_optimizer")
+            print(f"✅ Cost optimizer started")
+            
             return result
         except Exception as e:
             print(f"⚠️  Failed to create cost optimizer: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return None
     
     async def create_pattern_learner_agent(self):
@@ -242,32 +274,37 @@ Run daily analysis to continuously improve the system.""",
                 "model": os.getenv("LLM_MODEL", "gpt-4o-mini"),
                 "temperature": 0.4
             },
-            "agent_config": {
-                "max_steps": 20,
-                "tool_call_timeout": 120
-            },
-            "interval": 86400,  # 24 hours (daily)
-            "task_config": {
-                "query": "Analyze deployment patterns from the last 24 hours. Learn from successes and failures.",
-                "schedule": "daily",
-                "interval": 86400
-            },
+            "max_steps": 20,
+            "tool_call_timeout": 120,
             "local_tools": tool_registry
         }
         
+        task_config = {
+            "query": "Analyze deployment patterns from the last 24 hours. Learn from successes and failures.",
+            "schedule": "interval",
+            "interval_seconds": 86400,  # 24 hours (daily)
+        }
+        
         try:
-            result = await self.bg_service.create(agent_config)
+            result = self.bg_service.create_agent(agent_config)
             print(f"✅ Pattern learner created: {result}")
+            
+            self.bg_service.register_task("pattern_learner", task_config)
+            self.bg_service.start_agent("pattern_learner")
+            print(f"✅ Pattern learner started")
+            
             return result
         except Exception as e:
             print(f"⚠️  Failed to create pattern learner: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return None
     
     def list_agents(self):
         """List all background agents."""
         if not self.bg_service:
             return []
-        return self.bg_service.list()
+        return self.bg_service.list_agents()
     
     def get_agent_status(self, agent_id: str):
         """Get status of a specific agent."""
@@ -296,5 +333,5 @@ Run daily analysis to continuously improve the system.""",
     def shutdown(self):
         """Shutdown all background agents."""
         if self.bg_service:
-            self.bg_service.shutdown_manager()
+            self.bg_service.shutdown()
             print("✅ Background agent manager shut down")

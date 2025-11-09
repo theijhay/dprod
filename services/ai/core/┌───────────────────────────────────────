@@ -1,0 +1,52 @@
+┌─────────────────────────────────────────────────────────────────┐
+│                      DPROD PLATFORM                              │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌────────────────────────────────────────────────────────┐    │
+│  │         OmniCoreAgent Integration Layer                │    │
+│  │                                                          │    │
+│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐ │    │
+│  │  │ Project      │  │ Deployment   │  │ Optimization │ │    │
+│  │  │ Analyzer     │  │ Monitor      │  │ Agent        │ │    │
+│  │  │ Agent        │  │ Agent        │  │              │ │    │
+│  │  └──────────────┘  └──────────────┘  └──────────────┘ │    │
+│  │                                                          │    │
+│  │  ┌─────────────────────────────────────────────────┐   │    │
+│  │  │        OmniAgent Tool Registry                   │   │    │
+│  │  │                                                   │   │    │
+│  │  │  • analyze_project_structure()                   │   │    │
+│  │  │  • detect_framework()                            │   │    │
+│  │  │  • suggest_build_config()                        │   │    │
+│  │  │  • validate_deployment()                         │   │    │
+│  │  │  • optimize_resources()                          │   │    │
+│  │  │  • monitor_deployment_health()                   │   │    │
+│  │  └─────────────────────────────────────────────────┘   │    │
+│  │                                                          │    │
+│  │  ┌─────────────────────────────────────────────────┐   │    │
+│  │  │      Memory & Learning System                    │   │    │
+│  │  │                                                   │   │    │
+│  │  │  • Vector DB (Qdrant/ChromaDB) - Semantic Search│   │    │
+│  │  │  • Redis - Session & Real-time Data             │   │    │
+│  │  │  • PostgreSQL - Decision History & Patterns     │   │    │
+│  │  └─────────────────────────────────────────────────┘   │    │
+│  │                                                          │    │
+│  │  ┌─────────────────────────────────────────────────┐   │    │
+│  │  │      Background Agent System                     │   │    │
+│  │  │                                                   │   │    │
+│  │  │  • Deployment Health Monitor (every 5 min)      │   │    │
+│  │  │  • Cost Optimizer (hourly)                      │   │    │
+│  │  │  • Pattern Learner (daily)                      │   │    │
+│  │  │  • Performance Analyzer (continuous)            │   │    │
+│  │  └─────────────────────────────────────────────────┘   │    │
+│  └────────────────────────────────────────────────────────┘    │
+│                                                                  │
+│  ┌────────────────────────────────────────────────────────┐    │
+│  │              Existing Dprod Services                   │    │
+│  │                                                          │    │
+│  │  • API Service (FastAPI)                               │    │
+│  │  • Orchestrator (Docker)                               │    │
+│  │  • Detector (Rule-based + AI)                          │    │
+│  │  • Shared Models & DB                                  │    │
+│  └────────────────────────────────────────────────────────┘    │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘

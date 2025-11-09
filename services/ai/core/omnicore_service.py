@@ -1,8 +1,11 @@
 """OmniCoreAgent integration for dprod AI operations."""
-from omnicoreagent.omni_agent import OmniAgent
-from omnicoreagent.core.memory_store.memory_router import MemoryRouter
-from omnicoreagent.core.events.event_router import EventRouter
-from omnicoreagent.core.tools.local_tools_registry import ToolRegistry
+from omnicoreagent import (
+    OmniAgent,
+    MemoryRouter,
+    EventRouter,
+    ToolRegistry,
+    Tool
+)
 from typing import Dict, Any, Optional
 import os
 import asyncio
