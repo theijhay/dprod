@@ -439,27 +439,6 @@ dprod/
 │   └── test_ai_integration.py  # Standard AI test suite (6 tests)
 └── examples/                   # Example projects
 ```
-│   │       └── services/ai_service.py    # AI business logic
-│   ├── orchestrator/           # Deployment orchestration
-│   ├── detector/               # AI-enhanced project detection
-│   │   └── core/
-│   │       └── ai_detector.py            # Hybrid rule-based + AI
-│   └── shared/                 # Shared utilities
-│       └── core/
-│           └── models.py                 # AI decision models
-├── tools/                      # User-facing tools
-│   ├── cli/                    # Node.js CLI (published to npm)
-│   └── frontend/               # Web dashboard (future)
-├── alembic/                    # Database migrations
-│   └── versions/
-│       └── 076ae3b5902b_add_ai_agent_infrastructure.py  # AI schema
-├── scripts/
-│   └── test_ai_agent.py        # AI integration tests
-├── docs/
-│   ├── AI_AGENT_README.md      # 🤖 Complete AI documentation
-│   └── AIAgentIntegrationfoundationplan.md  # AI implementation plan
-└── examples/                   # Example projects
-```
 
 ## 🛠️ **Development**
 
