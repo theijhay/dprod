@@ -85,6 +85,16 @@ dprod deploy
 
 Dprod integrates **production-ready AI agents** that revolutionize deployment automation:
 
+### **Powered by OmniCoreAgent** 🤖
+
+Dprod uses **OmniCoreAgent**, a complete AI development platform that provides:
+
+- **🛠️ Custom AI Tools** - Register Python functions as intelligent tools
+- **🧠 Multi-Tier Memory** - Vector databases, Redis, PostgreSQL for learning
+- **📡 Real-Time Events** - Live monitoring and streaming
+- **🚁 Background Agents** - Autonomous 24/7 task execution
+- **🔧 Production-Ready** - Error handling, retry logic, observability built-in
+
 ### **How Our AI Works**
 
 1. **Project Analyzer Agent** 🔍
@@ -130,8 +140,6 @@ User Project → AI Project Analyzer → AI Logger → AI-Enhanced Detector
 - **Cost**: <$0.02 per AI-powered analysis
 - **Learning**: System improves by ~2-5% accuracy per 1000 deployments
 - **Confidence**: 85%+ confidence scores on correct detections
-
-**[View Complete AI Documentation →](./AI_AGENT_README.md)**
 
 ---
 
@@ -196,6 +204,74 @@ dprod status my-project
 # View deployment logs
 dprod logs my-project
 ```
+
+---
+
+## 🤖 **Enable AI-Powered Features (Optional)**
+
+Dprod works great without AI, but enabling AI features provides:
+- 95%+ accuracy in framework detection
+- Intelligent configuration optimization
+- Continuous learning from deployments
+- Cost and performance recommendations
+
+### **Quick AI Setup**
+
+```bash
+# 1. Set your OpenAI API key (or Anthropic, Groq, etc.)
+export LLM_API_KEY=sk-your-openai-api-key-here
+
+# 2. Enable AI features
+export AI_ENABLED=true
+
+# 3. Deploy with AI enhancements
+dprod deploy
+# 🔍 Analyzing your project...
+# ✅ Detected nodejs project (rule-based)
+# 🤖 Running AI verification...
+# ✅ AI agrees with detection (confidence: 94.2%)
+# 💡 AI suggests: Enable TypeScript in build config
+# ... deployment continues with AI-optimized config
+```
+
+### **Supported AI Providers**
+
+```bash
+# OpenAI (default)
+export LLM_PROVIDER=openai
+export LLM_MODEL=gpt-4o-mini
+export LLM_API_KEY=sk-...
+
+# Anthropic Claude
+export LLM_PROVIDER=anthropic
+export LLM_MODEL=claude-3-5-sonnet-20241022
+export LLM_API_KEY=sk-ant-...
+
+# Groq (fastest)
+export LLM_PROVIDER=groq
+export LLM_MODEL=llama-3.1-70b-versatile
+export LLM_API_KEY=gsk_...
+
+# Ollama (free, local)
+export LLM_PROVIDER=ollama
+export LLM_MODEL=llama3
+export OLLAMA_BASE_URL=http://localhost:11434
+```
+
+### **AI Features Overview**
+
+| Feature | Without AI | With AI |
+|---------|-----------|---------|
+| **Detection Accuracy** | ~85% | ~95% |
+| **Configuration** | Rule-based | AI-optimized |
+| **Learning** | Static | Improves over time |
+| **Optimization** | None | Cost & performance suggestions |
+| **Confidence Scores** | No | Yes (85-98%) |
+| **Setup Required** | None | API key only |
+
+**[Complete AI Documentation →](./docs/OMNICORE.md)**
+
+---
 
 ## 🎯 **Supported Project Types**
 
@@ -344,20 +420,14 @@ make test-api         # API tests only
 - [API Reference](DOCS.md#-api-reference) - REST API documentation
 - [CLI Reference](DOCS.md#-cli-reference) - Command-line interface guide
 
-### **🤖 AI Documentation (NEW)**
-- **[AI Agent README](./AI_AGENT_README.md)** - Complete AI system guide
-  - AI architecture and components
-  - Project Analyzer Agent usage
-  - AI monitoring and metrics
-  - OmniCore integration guide
-  - Testing and verification strategies
-  - Performance optimization
-  
-- **[AI Integration Plan](./AIAgentIntegrationfoundationplan.md)** - Technical implementation details
-  - Database schema for AI decisions
-  - Multi-layer verification system
-  - Continuous learning architecture
-  - Phase-by-phase implementation roadmap
+### **AI Documentation**
+
+- **[OmniCoreAgent Documentation](https://github.com/Abiorh001/omnicoreagent/blob/main/README.md)** - Full OmniCoreAgent docs
+  - Platform overview and capabilities
+  - Tool system and workflows
+  - Background agent system
+  - Memory and event management
+  - MCP integration
 
 ### **AI API Endpoints**
 ```bash
@@ -396,55 +466,10 @@ GET /api/v1/ai/patterns
 
 ---
 
-## 🚀 **Roadmap: Building the Future**
-
-### **Phase 1: Foundation** ✅ **COMPLETE**
-- [x] Zero-config deployment platform
-- [x] Multi-language support (Node.js, Python, Go, Static)
-- [x] AI infrastructure (database, logging, monitoring)
-- [x] Project Analyzer AI Agent
-- [x] AI-enhanced detection system
-- [x] AI monitoring dashboard API
-- [x] Comprehensive testing and verification
-
-### **Phase 2: AI Intelligence** 🔄 **IN PROGRESS**
-- [ ] OmniCore AI provider integration
-- [ ] OpenAI GPT-4 integration
-- [ ] Claude 3 integration
-- [ ] Advanced pattern learning
-- [ ] Predictive issue detection
-- [ ] A/B testing framework
-- [ ] Cost optimization AI agent
-
-### **Phase 3: Scale & Optimize** 📋 **PLANNED**
-- [ ] Multi-agent orchestration
-- [ ] Advanced resource optimization
-- [ ] Auto-scaling AI decisions
-- [ ] Security vulnerability detection
-- [ ] Performance optimization agent
-- [ ] Custom AI model training
-
-### **Phase 4: Enterprise** 🎯 **FUTURE**
-- [ ] Team collaboration features
-- [ ] Custom deployment policies
-- [ ] Advanced analytics and insights
-- [ ] Compliance and audit trails
-- [ ] Multi-cloud deployment
-- [ ] Enterprise SLA guarantees
-
----
-
 ## 🤝 **Contributing**
 
 We welcome contributions! Dprod is building the future of intelligent cloud deployment, and we'd love your help.
 
-### **Areas for Contribution**
-- 🤖 **AI/ML Engineers** - Improve AI agents, add new models, optimize learning algorithms
-- 🔧 **Backend Developers** - Enhance APIs, improve orchestration, optimize performance
-- 🎨 **Frontend Developers** - Build monitoring dashboard, improve CLI UX
-- 📊 **DevOps Engineers** - Infrastructure optimization, scaling strategies
-- 📝 **Technical Writers** - Documentation, tutorials, guides
-- 🧪 **QA Engineers** - Testing, verification, edge case discovery
 
 ### **How to Contribute**
 
