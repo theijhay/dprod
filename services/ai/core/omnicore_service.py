@@ -426,7 +426,7 @@ Provide responses in JSON format with:
             },
             
             # Memory and events
-            memory_store=self.memory_router,
+            memory_router=self.memory_router,
             event_router=self.event_router
         )
         
