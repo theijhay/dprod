@@ -17,7 +17,7 @@ router = APIRouter()
 # deployment_service = DeploymentService()  # OLD: shared instance
 
 
-@router.post("/projects/{project_id}/deployments", response_model=DeploymentResponse)
+@router.post("/projects/{project_id}", response_model=DeploymentResponse)
 async def create_deployment(
     project_id: str,
     file: UploadFile = File(...),
@@ -78,7 +78,7 @@ async def create_deployment(
     return DeploymentResponse.from_orm(new_deployment)
 
 
-@router.get("/projects/{project_id}/deployments", response_model=List[DeploymentResponse])
+@router.get("/projects/{project_id}", response_model=List[DeploymentResponse])
 async def list_deployments(
     project_id: str,
     current_user: User = Depends(get_current_user),
@@ -119,7 +119,7 @@ async def get_deployment(
     # Get deployment with project ownership check
     result = await db.execute(
         select(Deployment)
-        .join(Project)
+        .join(Project, Deployment.project_id == Project.id)
         .where(
             Deployment.id == deployment_id,
             Project.user_id == current_user.id
@@ -146,7 +146,7 @@ async def get_deployment_logs(
     # Get deployment with project ownership check
     result = await db.execute(
         select(Deployment)
-        .join(Project)
+        .join(Project, Deployment.project_id == Project.id)
         .where(
             Deployment.id == deployment_id,
             Project.user_id == current_user.id

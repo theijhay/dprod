@@ -40,12 +40,32 @@ class NodeJSDetector(BaseDetector):
                 with open(package_json_path, 'r') as f:
                     package_data = json.load(f)
                 
-                # Update start command if available
+                # Detect NestJS project
+                dependencies = package_data.get("dependencies", {})
+                dev_dependencies = package_data.get("devDependencies", {})
+                is_nestjs = "@nestjs/core" in dependencies or "@nestjs/core" in dev_dependencies
+                
+                # Update build and start commands based on project type
                 scripts = package_data.get("scripts", {})
-                if "start" in scripts:
-                    config.start_command = scripts["start"]
-                elif "dev" in scripts:
-                    config.start_command = scripts["dev"]
+                
+                if is_nestjs:
+                    # NestJS requires build step and runs built code
+                    config.build_command = "npm install && npm run build"
+                    if "start:prod" in scripts:
+                        config.start_command = scripts["start:prod"]
+                    else:
+                        config.start_command = "node dist/main"
+                else:
+                    # Standard Node.js app
+                    if "build" in scripts:
+                        # Has a build step
+                        config.build_command = "npm install && npm run build"
+                    
+                    # Update start command if available
+                    if "start" in scripts:
+                        config.start_command = scripts["start"]
+                    elif "dev" in scripts:
+                        config.start_command = scripts["dev"]
                 
                 # Check for specific port in package.json
                 if "port" in package_data:
