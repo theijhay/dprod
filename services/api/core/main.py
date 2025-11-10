@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
 from .utils.config import settings
-from .v1.routes import auth, projects, deployments, health, ai, omniagent
+from .v1 import api_router
 
 
 @asynccontextmanager
@@ -52,13 +52,8 @@ if os.getenv("ALLOW_ALL_HOSTS", "false").lower() != "true":
         allowed_hosts=settings.allowed_hosts
     )
 
-# Include routers
-app.include_router(health.router, prefix="/health", tags=["health"])
-app.include_router(auth.router, prefix="/auth", tags=["authentication"])
-app.include_router(projects.router, prefix="/projects", tags=["projects"])
-app.include_router(deployments.router, prefix="/deployments", tags=["deployments"])
-app.include_router(ai.router, prefix="/api/v1", tags=["ai-monitoring"])
-app.include_router(omniagent.router, prefix="/api/v1", tags=["omniagent"])
+# Routers
+app.include_router(api_router.router)
 
 
 def main() -> None:
