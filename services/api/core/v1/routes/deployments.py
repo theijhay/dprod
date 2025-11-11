@@ -139,6 +139,7 @@ async def get_deployment(
 @router.get("/{deployment_id}/logs")
 async def get_deployment_logs(
     deployment_id: str,
+    tail: int = 100,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
@@ -160,7 +161,37 @@ async def get_deployment_logs(
             detail="Deployment not found"
         )
     
+    # Try to get real-time logs from Docker container
+    logs_output = deployment.logs or ""
+    
+    if deployment.container_id:
+        try:
+            import docker
+            client = docker.from_env()
+            
+            try:
+                container = client.containers.get(deployment.container_id)
+                
+                # Get container logs (last N lines)
+                container_logs = container.logs(
+                    tail=tail,
+                    timestamps=True,
+                    stderr=True,
+                    stdout=True
+                ).decode('utf-8')
+                
+                logs_output = container_logs if container_logs else "No logs from container"
+                
+            except docker.errors.NotFound:
+                logs_output = deployment.logs or "Container no longer exists"
+            except Exception as e:
+                logs_output = deployment.logs or f"Error fetching container logs: {str(e)}"
+                
+        except Exception as e:
+            # Docker not available, use stored logs
+            logs_output = deployment.logs or f"Docker unavailable: {str(e)}"
+    
     return {
         "deployment_id": deployment.id,
-        "logs": deployment.logs or "No logs available"
+        "logs": logs_output or "No logs available"
     }

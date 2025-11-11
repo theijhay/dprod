@@ -1,0 +1,82 @@
+# Traefik Configuration for Dprod
+
+global:
+  checkNewVersion: true
+  sendAnonymousUsage: false
+
+# API and Dashboard
+api:
+  dashboard: true
+  insecure: false  # Dashboard only accessible via HTTPS with auth
+
+# Entry Points
+entryPoints:
+  web:
+    address: ":80"
+    # For local testing, we don't redirect to HTTPS
+    # Uncomment below for production:
+    # http:
+    #   redirections:
+    #     entryPoint:
+    #       to: websecure
+    #       scheme: https
+    #       permanent: true
+  
+  websecure:
+    address: ":443"
+    http:
+      tls:
+        certResolver: letsencrypt
+
+# Providers
+providers:
+  # Docker provider for automatic service discovery
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false  # Only expose containers with traefik.enable=true
+    network: dprod-network
+    watch: true
+  
+  # File provider for static configuration
+  file:
+    directory: "/etc/traefik/dynamic"
+    watch: true
+
+# Certificate Resolvers
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email: admin@dprod.app  # Change this in production
+      storage: /letsencrypt/acme.json
+      # Use HTTP challenge for wildcard support
+      httpChallenge:
+        entryPoint: web
+      # For wildcard certificates, use DNS challenge instead:
+      # dnsChallenge:
+      #   provider: cloudflare
+      #   resolvers:
+      #     - "1.1.1.1:53"
+      #     - "8.8.8.8:53"
+
+# Logging
+log:
+  level: INFO  # DEBUG, INFO, WARN, ERROR, FATAL, PANIC
+  filePath: /var/log/traefik/traefik.log
+  format: json
+
+# Access Logs
+accessLog:
+  filePath: /var/log/traefik/access.log
+  format: json
+  filters:
+    statusCodes:
+      - "400-599"  # Only log errors
+
+# Metrics (optional)
+# metrics:
+#   prometheus:
+#     buckets:
+#       - 0.1
+#       - 0.3
+#       - 1.2
+#       - 5.0
