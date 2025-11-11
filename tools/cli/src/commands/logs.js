@@ -14,7 +14,7 @@ async function logsAction(projectName, options) {
       projectName = await getCurrentProjectName();
     }
 
-    const logs = await api.getDeploymentLogs(projectName, {
+    const logsData = await api.getDeploymentLogs(projectName, {
       deploymentId: options.deployment,
       tail: options.tail,
       follow: options.follow
@@ -22,10 +22,10 @@ async function logsAction(projectName, options) {
 
     if (options.follow) {
       console.log(`📝 Streaming logs for ${projectName}...\n`);
-      await streamLogs(logs);
+      await streamLogs(logsData);
     } else {
       console.log(`📝 Logs for ${projectName}:\n`);
-      displayLogs(logs);
+      displayLogs(logsData);
     }
 
   } catch (error) {
@@ -47,12 +47,32 @@ async function streamLogs(logStream) {
   });
 }
 
-function displayLogs(logs) {
-  logs.forEach(logEntry => {
-    const prefix = getLogPrefix(logEntry.level);
-    const timestamp = new Date(logEntry.timestamp).toLocaleTimeString();
-    console.log(`[${timestamp}] ${prefix} ${logEntry.message}`);
-  });
+function displayLogs(logsData) {
+  // Handle both string and object formats
+  if (typeof logsData === 'string') {
+    console.log(logsData);
+    return;
+  }
+  
+  if (logsData.logs) {
+    // API returns { deployment_id, logs }
+    if (typeof logsData.logs === 'string') {
+      console.log(logsData.logs);
+    } else if (Array.isArray(logsData.logs)) {
+      logsData.logs.forEach(logEntry => {
+        const prefix = getLogPrefix(logEntry.level);
+        const timestamp = new Date(logEntry.timestamp).toLocaleTimeString();
+        console.log(`[${timestamp}] ${prefix} ${logEntry.message}`);
+      });
+    }
+  } else if (Array.isArray(logsData)) {
+    // Handle array of log entries
+    logsData.forEach(logEntry => {
+      const prefix = getLogPrefix(logEntry.level);
+      const timestamp = new Date(logEntry.timestamp).toLocaleTimeString();
+      console.log(`[${timestamp}] ${prefix} ${logEntry.message}`);
+    });
+  }
 }
 
 function getLogPrefix(level) {

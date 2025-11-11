@@ -1,0 +1,63 @@
+# Traefik Dynamic Configuration
+# This file contains static routes and middleware
+
+http:
+  # Middleware
+  middlewares:
+    # Security headers
+    security-headers:
+      headers:
+        frameDeny: true
+        browserXssFilter: true
+        contentTypeNosniff: true
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        stsPreload: true
+    
+    # Rate limiting
+    rate-limit:
+      rateLimit:
+        average: 100
+        burst: 50
+        period: 1s
+    
+    # Compression
+    compression:
+      compress: true
+  
+  # Routers for dprod platform itself
+  routers:
+    # API routes
+    api:
+      rule: "Host(`dprod.app`) && PathPrefix(`/api`)"
+      service: dprod-api
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt
+      middlewares:
+        - security-headers
+        - rate-limit
+    
+    # Frontend/Dashboard
+    frontend:
+      rule: "Host(`dprod.app`)"
+      service: dprod-frontend
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt
+      middlewares:
+        - security-headers
+  
+  # Services
+  services:
+    dprod-api:
+      loadBalancer:
+        servers:
+          - url: "http://dprod-api:8000"
+    
+    dprod-frontend:
+      loadBalancer:
+        servers:
+          - url: "http://dprod-frontend:3000"

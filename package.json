@@ -11,7 +11,7 @@
     "dev": "concurrently -n api,cli -c blue,green \"npm:dev:api\" \"npm:dev:cli\"",
     "dev:all": "concurrently -n api,cli,frontend -c blue,green,magenta \"npm:dev:api\" \"npm:dev:cli\" \"npm:dev:frontend\"",
     "dev:api": "cd $INIT_CWD && PYTHONPATH=$INIT_CWD poetry run python -m uvicorn services.api.core.main:app --reload --host 0.0.0.0 --port 8000",
-    "dev:cli": "cd tools/cli && npm link",
+    "dev:cli": "cd tools/cli && sudo npm link",
     "dev:frontend": "cd tools/frontend && npm run dev",
     "start": "npm run dev",
     "docker:up": "docker-compose up --build",

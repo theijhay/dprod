@@ -26,14 +26,20 @@ async function statusAction(projectName) {
 
 async function showProjectStatus(projectName) {
   const project = await api.getProject(projectName);
+  
+  if (!project) {
+    console.log(`❌ Project "${projectName}" not found.`);
+    return;
+  }
+  
   const deployments = await api.getProjectDeployments(project.id, { limit: 5 });
 
   console.log(`\n📊 Project: ${project.name}`);
-  console.log(`🔗 URL: ${project.url}`);
-  console.log(`📅 Created: ${new Date(project.createdAt).toLocaleDateString()}`);
+  console.log(`🔗 URL: ${project.url || 'Not deployed'}`);
+  console.log(`📅 Created: ${new Date(project.created_at).toLocaleDateString()}`);
   console.log(`🔄 Status: ${getStatusEmoji(project.status)} ${project.status}`);
 
-  if (deployments.length > 0) {
+  if (deployments && deployments.length > 0) {
     console.log('\n📦 Recent Deployments:');
     
     const table = new Table({
@@ -42,7 +48,7 @@ async function showProjectStatus(projectName) {
 
     deployments.forEach(deployment => {
       table.push([
-        new Date(deployment.createdAt).toLocaleDateString(),
+        new Date(deployment.created_at).toLocaleDateString(),
         `${getStatusEmoji(deployment.status)} ${deployment.status}`,
         deployment.url || 'N/A',
         deployment.duration ? `${deployment.duration}s` : 'N/A'
@@ -71,8 +77,8 @@ async function listProjects() {
     table.push([
       project.name,
       `${getStatusEmoji(project.status)} ${project.status}`,
-      project.url,
-      project.lastDeployed ? new Date(project.lastDeployed).toLocaleDateString() : 'Never'
+      project.url || 'N/A',
+      project.last_deployed ? new Date(project.last_deployed).toLocaleDateString() : 'Never'
     ]);
   });
 

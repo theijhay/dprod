@@ -98,16 +98,24 @@ class DockerManager:
             Container ID
         """
         try:
+            import os
+            
             print(f"🚀 Starting container for {project.name}")
             
             # Generate unique container name
             container_name = f"dprod-{project.name.lower()}-{uuid.uuid4().hex[:8]}"
             
-            # Container configuration
+            # Get subdomain for routing
+            subdomain = getattr(project, 'subdomain', None) or project.name.lower().replace('_', '-')
+            
+            # Determine environment
+            is_production = os.getenv('NODE_ENV') == 'production'
+            use_traefik = os.getenv('USE_TRAEFIK', 'false').lower() == 'true'
+            
+            # Base container configuration
             container_config = {
                 "image": image_id,
                 "name": container_name,
-                "ports": {f"{config.port}/tcp": None},  # Random port mapping
                 "environment": config.environment,
                 "detach": True,
                 "remove": False,
@@ -120,6 +128,34 @@ class DockerManager:
                     "project_id": str(project.id)
                 }
             }
+            
+            # Configure routing based on environment
+            if use_traefik or is_production:
+                # Production mode: Use Traefik for routing
+                domain = "dprod.app" if is_production else "dprod.local"
+                
+                # Add Traefik labels for automatic routing
+                container_config["labels"].update({
+                    "traefik.enable": "true",
+                    f"traefik.http.routers.{project.name}.rule": f"Host(`{subdomain}.{domain}`)",
+                    f"traefik.http.routers.{project.name}.entrypoints": "web",
+                    f"traefik.http.services.{project.name}.loadbalancer.server.port": str(config.port),
+                })
+                
+                # Only add SSL in production
+                if is_production:
+                    container_config["labels"].update({
+                        f"traefik.http.routers.{project.name}.tls.certresolver": "letsencrypt",
+                    })
+                
+                # Connect to Traefik network
+                container_config["network"] = "dprod-network"
+                
+                print(f"📡 Traefik routing: {subdomain}.{domain} → container:{config.port}")
+            else:
+                # Development mode: Direct port mapping
+                container_config["ports"] = {f"{config.port}/tcp": None}  # Random port mapping
+                print(f"🔧 Development mode: Random port mapping for {config.port}")
             
             # Run container
             container = self.client.containers.run(**container_config)

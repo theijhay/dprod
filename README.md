@@ -202,6 +202,12 @@ When you run `dprod deploy`, here's what happens with AI enabled:
 npm install -g dprod-cli
 ```
 
+> **Note for users with custom npm prefix**: If you've configured a custom npm global prefix (e.g., via `npm config set prefix ~/.npm-global`), ensure the bin directory is in your PATH. Add this to your shell profile (e.g., `~/.bashrc` or `~/.zshrc`):
+> ```bash
+> export PATH="$HOME/.npm-global/bin:$PATH"
+> ```
+> Then reload your profile: `source ~/.bashrc`
+
 ### **Deploy Your First Project**
 
 ```bash
