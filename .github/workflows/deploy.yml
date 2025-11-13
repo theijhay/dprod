@@ -3,7 +3,7 @@ name: Deploy to AWS Fargate
 on:
   push:
     branches:
-      - staging
+      - main
       - master
   workflow_dispatch:  # Allows manual trigger from GitHub UI
 
@@ -64,6 +64,92 @@ jobs:
         task-definition: task-definition.json
         container-name: ${{ env.CONTAINER_NAME }}
         image: ${{ steps.build-image.outputs.image }}
+
+    - name: Run database migrations
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        echo "Running database migrations..."
+        
+        # Get AWS Account ID
+        AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+        
+        # Create migration task definition
+        cat > migration-task-def.json <<EOF
+        {
+          "family": "dprod-migration",
+          "networkMode": "awsvpc",
+          "requiresCompatibilities": ["FARGATE"],
+          "cpu": "256",
+          "memory": "512",
+          "executionRoleArn": "arn:aws:iam::${AWS_ACCOUNT_ID}:role/ecsTaskExecutionRole",
+          "containerDefinitions": [
+            {
+              "name": "migration",
+              "image": "$ECR_REGISTRY/$ECR_REPOSITORY:latest",
+              "command": ["sh", "-c", "alembic upgrade head"],
+              "secrets": [
+                {"name": "DATABASE_URL", "valueFrom": "arn:aws:ssm:${{ env.AWS_REGION }}:${AWS_ACCOUNT_ID}:parameter/dprod/production/DATABASE_URL"}
+              ],
+              "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                  "awslogs-group": "/ecs/dprod-migration",
+                  "awslogs-region": "${{ env.AWS_REGION }}",
+                  "awslogs-stream-prefix": "migration",
+                  "awslogs-create-group": "true"
+                }
+              }
+            }
+          ]
+        }
+        EOF
+        
+        # Register migration task definition
+        aws ecs register-task-definition \
+          --cli-input-json file://migration-task-def.json
+        
+        # Get VPC configuration from service
+        VPC_CONFIG=$(aws ecs describe-services \
+          --cluster ${{ env.ECS_CLUSTER }} \
+          --services ${{ env.ECS_SERVICE }} \
+          --query 'services[0].networkConfiguration.awsvpcConfiguration' \
+          --output json)
+        
+        SUBNETS=$(echo $VPC_CONFIG | jq -r '.subnets | join(",")')
+        SECURITY_GROUPS=$(echo $VPC_CONFIG | jq -r '.securityGroups | join(",")')
+        
+        # Run migration task
+        MIGRATION_TASK_ARN=$(aws ecs run-task \
+          --cluster ${{ env.ECS_CLUSTER }} \
+          --task-definition dprod-migration \
+          --launch-type FARGATE \
+          --network-configuration "awsvpcConfiguration={subnets=[$SUBNETS],securityGroups=[$SECURITY_GROUPS],assignPublicIp=ENABLED}" \
+          --query 'tasks[0].taskArn' \
+          --output text)
+        
+        echo "Migration task started: $MIGRATION_TASK_ARN"
+        
+        # Wait for migration to complete
+        aws ecs wait tasks-stopped \
+          --cluster ${{ env.ECS_CLUSTER }} \
+          --tasks $MIGRATION_TASK_ARN
+        
+        # Check exit code
+        EXIT_CODE=$(aws ecs describe-tasks \
+          --cluster ${{ env.ECS_CLUSTER }} \
+          --tasks $MIGRATION_TASK_ARN \
+          --query 'tasks[0].containers[0].exitCode' \
+          --output text)
+        
+        if [ "$EXIT_CODE" != "0" ]; then
+          echo "❌ Migration failed with exit code: $EXIT_CODE"
+          echo "Check logs: aws logs tail /ecs/dprod-migration --follow"
+          exit 1
+        fi
+        
+        echo "✅ Database migrations completed successfully"
 
     - name: Deploy to Amazon ECS
       uses: aws-actions/amazon-ecs-deploy-task-definition@v1

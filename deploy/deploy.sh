@@ -51,10 +51,26 @@ fi
 log "Logging into ECR..."
 aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_URI
 
-# Build Docker image
+# Pull latest image for cache
+log "Pulling latest image for cache..."
+docker pull $ECR_URI:latest 2>/dev/null || warn "No previous image found (first build?)"
+
+# Navigate to project root
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+cd "$PROJECT_ROOT"
+
+# Clean Python cache files to ensure consistent builds
+log "Cleaning Python cache files..."
+find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+find . -type f -name "*.pyc" -delete 2>/dev/null || true
+find . -type f -name "*.pyo" -delete 2>/dev/null || true
+
+# Build Docker image with cache
 log "Building Docker image..."
-cd ..
-docker build -t $ECR_REPO_NAME:latest .
+DOCKER_BUILDKIT=1 docker build \
+  --cache-from $ECR_URI:latest \
+  -t $ECR_REPO_NAME:latest .
 
 # Tag for ECR
 log "Tagging image..."
@@ -89,8 +105,16 @@ TASK_DEF=$(cat <<EOF
         }
       ],
       "environment": [
-        {"name": "NODE_ENV", "value": "production"}
+        {"name": "NODE_ENV", "value": "production"},
+        {"name": "ALLOW_ALL_HOSTS", "value": "true"}
       ],
+      "healthCheck": {
+        "command": ["CMD-SHELL", "curl -f -H 'Host: localhost' http://localhost:8000/ || exit 1"],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 60
+      },
       "secrets": [
         {"name": "DATABASE_URL", "valueFrom": "arn:aws:ssm:$AWS_REGION:$AWS_ACCOUNT_ID:parameter/dprod/$ENVIRONMENT/DATABASE_URL"},
         {"name": "REDIS_URL", "valueFrom": "arn:aws:ssm:$AWS_REGION:$AWS_ACCOUNT_ID:parameter/dprod/$ENVIRONMENT/REDIS_URL"},
@@ -121,6 +145,89 @@ EOF
 echo "$TASK_DEF" > /tmp/dprod-task-def.json
 aws ecs register-task-definition --region $AWS_REGION --cli-input-json file:///tmp/dprod-task-def.json > /dev/null
 success "Task definition registered"
+
+# Run database migrations
+log "Running database migrations..."
+MIGRATION_TASK_DEF=$(cat <<EOF
+{
+  "family": "dprod-migration",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "256",
+  "memory": "512",
+  "executionRoleArn": "arn:aws:iam::$AWS_ACCOUNT_ID:role/ecsTaskExecutionRole",
+  "containerDefinitions": [
+    {
+      "name": "migration",
+      "image": "$ECR_URI:latest",
+      "command": ["sh", "-c", "alembic upgrade head"],
+      "secrets": [
+        {"name": "DATABASE_URL", "valueFrom": "arn:aws:ssm:$AWS_REGION:$AWS_ACCOUNT_ID:parameter/dprod/$ENVIRONMENT/DATABASE_URL"}
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/dprod-migration",
+          "awslogs-region": "$AWS_REGION",
+          "awslogs-stream-prefix": "migration",
+          "awslogs-create-group": "true"
+        }
+      }
+    }
+  ]
+}
+EOF
+)
+
+# Register migration task definition
+echo "$MIGRATION_TASK_DEF" > /tmp/dprod-migration-task-def.json
+aws ecs register-task-definition --region $AWS_REGION --cli-input-json file:///tmp/dprod-migration-task-def.json > /dev/null
+
+# Get VPC configuration from existing service
+VPC_CONFIG=$(aws ecs describe-services \
+  --cluster $CLUSTER_NAME \
+  --services $SERVICE_NAME \
+  --region $AWS_REGION \
+  --query 'services[0].networkConfiguration.awsvpcConfiguration' \
+  --output json)
+
+SUBNETS=$(echo $VPC_CONFIG | jq -r '.subnets | join(",")')
+SECURITY_GROUPS=$(echo $VPC_CONFIG | jq -r '.securityGroups | join(",")')
+
+# Run migration task
+log "Executing migration task..."
+MIGRATION_TASK_ARN=$(aws ecs run-task \
+  --cluster $CLUSTER_NAME \
+  --task-definition dprod-migration \
+  --launch-type FARGATE \
+  --network-configuration "awsvpcConfiguration={subnets=[$SUBNETS],securityGroups=[$SECURITY_GROUPS],assignPublicIp=ENABLED}" \
+  --region $AWS_REGION \
+  --query 'tasks[0].taskArn' \
+  --output text)
+
+if [ -n "$MIGRATION_TASK_ARN" ]; then
+  log "Waiting for migration to complete..."
+  aws ecs wait tasks-stopped \
+    --cluster $CLUSTER_NAME \
+    --tasks $MIGRATION_TASK_ARN \
+    --region $AWS_REGION
+  
+  # Check migration task exit code
+  EXIT_CODE=$(aws ecs describe-tasks \
+    --cluster $CLUSTER_NAME \
+    --tasks $MIGRATION_TASK_ARN \
+    --region $AWS_REGION \
+    --query 'tasks[0].containers[0].exitCode' \
+    --output text)
+  
+  if [ "$EXIT_CODE" = "0" ]; then
+    success "Database migrations completed successfully"
+  else
+    error "Migration failed with exit code: $EXIT_CODE. Check logs at /ecs/dprod-migration"
+  fi
+else
+  warn "Could not start migration task"
+fi
 
 # Check if service exists
 log "Checking if service exists..."
