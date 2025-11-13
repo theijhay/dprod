@@ -146,3 +146,5 @@ Thumbs.db
 IMPROVEMENT_PLAN.md
 dprod.md
 AIAgentIntegrationfoundationplan.md
+deploy/README.md
+deploy/get-url.sh
