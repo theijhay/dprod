@@ -15,6 +15,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '../../../../..'))
 from services.detector.core.detector import ProjectDetector
 from services.detector.core.ai_detector import AIEnhancedDetector
 from services.orchestrator.core.deployment_manager import DeploymentManager
+from services.orchestrator.core.sqs_deployment_manager import SQSDeploymentManager
 
 
 class DeploymentService:
@@ -45,8 +46,17 @@ class DeploymentService:
             self.detector = ProjectDetector()
             self.use_ai = False
             
-        # Defer creating DeploymentManager (requires local Docker) until used
-        self.deployment_manager = None
+        # Choose deployment manager based on environment
+        # Use SQS-based manager if SQS_QUEUE_URL is set (production)
+        # Otherwise use local Docker manager (development)
+        self.sqs_queue_url = os.getenv("SQS_QUEUE_URL")
+        if self.sqs_queue_url:
+            print("📥 Using SQS-based deployment (production mode)")
+            self.deployment_manager = SQSDeploymentManager()
+        else:
+            print("🐳 Using local Docker deployment (development mode)")
+            # Defer creating DeploymentManager (requires local Docker) until used
+            self.deployment_manager = None
     
     async def deploy_project(
         self,
@@ -66,11 +76,11 @@ class DeploymentService:
         try:
             print(f"🚀 Starting deployment for project: {project.name}")
             
-            # Lazily create the deployment manager when needed
+            # Lazily create the local deployment manager if needed
             if self.deployment_manager is None:
                 self.deployment_manager = DeploymentManager()
 
-            # Deploy using the deployment manager
+            # Deploy using the deployment manager (SQS or local Docker)
             deployment_info = await self.deployment_manager.deploy_project(
                 project=project,
                 source_code=source_code,

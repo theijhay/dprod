@@ -1,0 +1,188 @@
+name: Deploy Workers
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'services/worker/**'
+      - 'services/shared/**'
+      - '.github/workflows/deploy-workers.yml'
+  workflow_dispatch:  # Allows manual trigger
+
+env:
+  AWS_REGION: us-east-1
+  ASG_NAME: dprod-worker-asg
+
+jobs:
+  deploy-workers:
+    name: Deploy Worker Code
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Create worker code package
+      run: |
+        echo "📦 Creating worker code package..."
+        tar -czf worker-code.tar.gz \
+          services/worker \
+          services/shared \
+          --exclude='__pycache__' \
+          --exclude='*.pyc'
+        
+        echo "✅ Package created: $(du -h worker-code.tar.gz | cut -f1)"
+
+    - name: Get AWS Account ID
+      id: account
+      run: |
+        ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+        echo "account_id=$ACCOUNT_ID" >> $GITHUB_OUTPUT
+
+    - name: Upload to S3
+      run: |
+        BUCKET_NAME="dprod-deployments-${{ steps.account.outputs.account_id }}"
+        
+        # Create bucket if it doesn't exist
+        aws s3 mb "s3://$BUCKET_NAME" --region ${{ env.AWS_REGION }} 2>/dev/null || true
+        
+        # Upload package
+        aws s3 cp worker-code.tar.gz "s3://$BUCKET_NAME/worker-code.tar.gz"
+        
+        echo "✅ Package uploaded to s3://$BUCKET_NAME/worker-code.tar.gz"
+
+    - name: Get worker instances
+      id: instances
+      run: |
+        INSTANCE_IDS=$(aws autoscaling describe-auto-scaling-groups \
+          --auto-scaling-group-names ${{ env.ASG_NAME }} \
+          --query "AutoScalingGroups[0].Instances[?HealthStatus=='Healthy'].InstanceId" \
+          --output text)
+        
+        if [ -z "$INSTANCE_IDS" ]; then
+          echo "⚠️  No healthy instances found in Auto Scaling Group"
+          echo "instances=" >> $GITHUB_OUTPUT
+          exit 0
+        fi
+        
+        echo "instances=$INSTANCE_IDS" >> $GITHUB_OUTPUT
+        echo "✅ Found instances: $INSTANCE_IDS"
+
+    - name: Deploy to worker instances
+      if: steps.instances.outputs.instances != ''
+      run: |
+        BUCKET_NAME="dprod-deployments-${{ steps.account.outputs.account_id }}"
+        INSTANCE_IDS="${{ steps.instances.outputs.instances }}"
+        
+        for INSTANCE_ID in $INSTANCE_IDS; do
+          echo "📤 Deploying to instance: $INSTANCE_ID"
+          
+          # Send deployment command via SSM
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name "AWS-RunShellScript" \
+            --parameters commands="[
+              'set -e',
+              'cd /opt/dprod-worker',
+              'echo \"📥 Downloading worker code...\"',
+              'aws s3 cp s3://$BUCKET_NAME/worker-code.tar.gz /tmp/',
+              'echo \"📦 Extracting worker code...\"',
+              'sudo tar -xzf /tmp/worker-code.tar.gz',
+              'echo \"📚 Installing dependencies...\"',
+              'sudo python3.11 -m pip install -r services/worker/requirements.txt --quiet',
+              'echo \"🔄 Restarting worker service...\"',
+              'sudo systemctl daemon-reload',
+              'sudo systemctl restart dprod-worker || true',
+              'sleep 2',
+              'echo \"✅ Deployment complete!\"',
+              'sudo systemctl status dprod-worker --no-pager'
+            ]" \
+            --region ${{ env.AWS_REGION }} \
+            --query 'Command.CommandId' \
+            --output text)
+          
+          echo "   Command ID: $COMMAND_ID"
+          
+          # Wait for command to complete (max 2 minutes)
+          echo "   Waiting for deployment to complete..."
+          sleep 5
+          
+          for i in {1..24}; do
+            STATUS=$(aws ssm get-command-invocation \
+              --command-id "$COMMAND_ID" \
+              --instance-id "$INSTANCE_ID" \
+              --query 'Status' \
+              --output text 2>/dev/null || echo "Pending")
+            
+            if [ "$STATUS" = "Success" ]; then
+              echo "   ✅ Deployment successful on $INSTANCE_ID"
+              
+              # Show output
+              OUTPUT=$(aws ssm get-command-invocation \
+                --command-id "$COMMAND_ID" \
+                --instance-id "$INSTANCE_ID" \
+                --query 'StandardOutputContent' \
+                --output text)
+              echo "$OUTPUT" | tail -5
+              break
+            elif [ "$STATUS" = "Failed" ]; then
+              echo "   ❌ Deployment failed on $INSTANCE_ID"
+              
+              # Show error
+              ERROR=$(aws ssm get-command-invocation \
+                --command-id "$COMMAND_ID" \
+                --instance-id "$INSTANCE_ID" \
+                --query 'StandardErrorContent' \
+                --output text)
+              echo "$ERROR"
+              exit 1
+            fi
+            
+            sleep 5
+          done
+        done
+
+    - name: Verify worker health
+      if: steps.instances.outputs.instances != ''
+      run: |
+        echo "🏥 Verifying worker health..."
+        
+        # Check CloudWatch logs for recent activity
+        RECENT_LOGS=$(aws logs filter-log-events \
+          --log-group-name /dprod/worker \
+          --start-time $(date -d '5 minutes ago' +%s)000 \
+          --query 'events[*].message' \
+          --output text 2>/dev/null || echo "")
+        
+        if [ -n "$RECENT_LOGS" ]; then
+          echo "✅ Workers are active and logging"
+          echo "Recent log sample:"
+          echo "$RECENT_LOGS" | head -3
+        else
+          echo "⚠️  No recent worker logs found"
+          echo "Workers may be idle or logging to a different location"
+        fi
+
+    - name: Deployment summary
+      run: |
+        echo "=" | head -c 60
+        echo ""
+        echo "✅ Worker Deployment Complete!"
+        echo "=" | head -c 60
+        echo ""
+        echo "📦 Package: worker-code.tar.gz"
+        echo "🏷️  Commit: ${{ github.sha }}"
+        echo "🖥️  Instances: ${{ steps.instances.outputs.instances || 'none' }}"
+        echo ""
+        echo "📝 Next Steps:"
+        echo "   • Monitor logs: aws logs tail /dprod/worker --follow"
+        echo "   • Test deployment: npx dprod deploy demo"
+        echo "   • Check queue: aws sqs get-queue-attributes --queue-url \$SQS_QUEUE_URL"

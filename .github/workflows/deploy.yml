@@ -51,6 +51,24 @@ jobs:
         
         echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:latest" >> $GITHUB_OUTPUT
 
+    - name: Ensure SQS Queue exists
+      run: |
+        echo "📥 Checking SQS Queue configuration..."
+        
+        # Check if queue URL is in Parameter Store
+        SQS_QUEUE_URL=$(aws ssm get-parameter \
+          --name /dprod/production/SQS_QUEUE_URL \
+          --query 'Parameter.Value' \
+          --output text 2>/dev/null || echo "")
+        
+        if [ -z "$SQS_QUEUE_URL" ]; then
+          echo "⚠️  SQS_QUEUE_URL not found in Parameter Store"
+          echo "   Run: ./deploy/setup-worker-infra.sh to create worker infrastructure"
+          echo "   Deployment will continue without SQS support (local Docker mode)"
+        else
+          echo "✅ SQS Queue configured: $SQS_QUEUE_URL"
+        fi
+
     - name: Download current task definition
       run: |
         aws ecs describe-task-definition \
@@ -161,7 +179,37 @@ jobs:
 
     - name: Deployment summary
       run: |
-        echo "✅ Deployment successful!"
+        echo "=" | head -c 60
+        echo ""
+        echo "✅ API Deployment Successful!"
+        echo "=" | head -c 60
+        echo ""
         echo "🔗 Service: ${{ env.ECS_SERVICE }}"
         echo "📦 Image: ${{ steps.build-image.outputs.image }}"
         echo "🏷️  Commit: ${{ github.sha }}"
+        echo ""
+        
+        # Check if workers are configured
+        SQS_QUEUE_URL=$(aws ssm get-parameter \
+          --name /dprod/production/SQS_QUEUE_URL \
+          --query 'Parameter.Value' \
+          --output text 2>/dev/null || echo "")
+        
+        if [ -n "$SQS_QUEUE_URL" ]; then
+          echo "📥 SQS Queue: Configured"
+          echo "🖥️  Worker Mode: Production (SQS-based)"
+          echo ""
+          echo "📝 To deploy worker code changes:"
+          echo "   • Push to services/worker/** to trigger worker deployment"
+          echo "   • Or manually run: ./deploy/deploy-worker-code.sh"
+        else
+          echo "⚠️  Worker Infrastructure: Not configured"
+          echo "🐳 Worker Mode: Development (local Docker)"
+          echo ""
+          echo "📝 To enable production workers:"
+          echo "   1. Run: ./deploy/setup-worker-infra.sh"
+          echo "   2. Run: ./deploy/setup-worker-asg.sh"
+          echo "   3. Run: ./deploy/deploy-worker-code.sh"
+          echo "   4. Redeploy API (this workflow)"
+        fi
+
