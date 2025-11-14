@@ -113,7 +113,7 @@ coverage.xml
 .python-version
 
 # Poetry
-poetry.lock
+# poetry.lock  # Should be committed for reproducible builds
 
 # mypy
 .mypy_cache/
