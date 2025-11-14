@@ -42,7 +42,11 @@ def get_db_engine(test_mode: bool = False) -> AsyncEngine:
         database_url,
         echo=settings.debug,
         future=True,
-        connect_args=connect_args
+        connect_args=connect_args,
+        pool_pre_ping=True,  # Test connections before using them
+        pool_size=5,         # Smaller pool for serverless databases
+        max_overflow=10,     # Allow temporary connections
+        pool_recycle=300,    # Recycle connections after 5 minutes
     )
 
 

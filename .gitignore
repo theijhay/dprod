@@ -148,3 +148,12 @@ dprod.md
 AIAgentIntegrationfoundationplan.md
 deploy/README.md
 deploy/get-url.sh
+deploy/enable-spot.sh
+deploy/setup-worker-asg.sh
+deploy/setup-worker-infra.sh
+deploy/teardown-worker-infra.sh
+deploy/deploy-worker-code.sh
+QUICKSTART.md
+ARCHITECTURE.md
+WORKER-DEPLOYMENT.md
+.github/CI-CD.md
