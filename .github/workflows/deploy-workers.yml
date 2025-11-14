@@ -52,7 +52,12 @@ jobs:
         BUCKET_NAME="dprod-deployments-${{ steps.account.outputs.account_id }}"
         
         # Create bucket if it doesn't exist
-        aws s3 mb "s3://$BUCKET_NAME" --region ${{ env.AWS_REGION }} 2>/dev/null || true
+        if ! aws s3 ls "s3://$BUCKET_NAME" 2>/dev/null; then
+          echo "Creating S3 bucket: $BUCKET_NAME"
+          aws s3 mb "s3://$BUCKET_NAME" --region ${{ env.AWS_REGION }}
+        else
+          echo "S3 bucket already exists: $BUCKET_NAME"
+        fi
         
         # Upload package
         aws s3 cp worker-code.tar.gz "s3://$BUCKET_NAME/worker-code.tar.gz"
