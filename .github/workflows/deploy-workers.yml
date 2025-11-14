@@ -91,6 +91,29 @@ jobs:
         for INSTANCE_ID in $INSTANCE_IDS; do
           echo "📤 Deploying to instance: $INSTANCE_ID"
           
+          # Check if instance is ready for SSM
+          echo "   Checking SSM readiness..."
+          SSM_READY=false
+          for i in {1..30}; do
+            if aws ssm describe-instance-information \
+              --filters "Key=InstanceIds,Values=$INSTANCE_ID" \
+              --query 'InstanceInformationList[0].PingStatus' \
+              --output text 2>/dev/null | grep -q "Online"; then
+              SSM_READY=true
+              echo "   ✅ Instance is ready for SSM commands"
+              break
+            fi
+            echo "   Waiting for SSM agent... (attempt $i/30)"
+            sleep 10
+          done
+          
+          if [ "$SSM_READY" != "true" ]; then
+            echo "   ⚠️  Instance not ready for SSM after 5 minutes"
+            echo "   Skipping deployment to $INSTANCE_ID"
+            echo "   Manual deployment may be needed: ./deploy-worker-code.sh"
+            continue
+          fi
+          
           # Send deployment command via SSM
           COMMAND_ID=$(aws ssm send-command \
             --instance-ids "$INSTANCE_ID" \
