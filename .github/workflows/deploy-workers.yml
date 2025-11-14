@@ -33,11 +33,11 @@ jobs:
     - name: Create worker code package
       run: |
         echo "📦 Creating worker code package..."
-        tar -czf worker-code.tar.gz \
+        tar --exclude='__pycache__' \
+          --exclude='*.pyc' \
+          -czf worker-code.tar.gz \
           services/worker \
-          services/shared \
-          --exclude='__pycache__' \
-          --exclude='*.pyc'
+          services/shared
         
         echo "✅ Package created: $(du -h worker-code.tar.gz | cut -f1)"
 
