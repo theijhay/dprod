@@ -12,7 +12,7 @@ from typing import Dict, Any, Optional
 import boto3
 from botocore.exceptions import ClientError
 
-from services.shared.core.models import Project
+from services.shared.core.models import Project, ProjectType
 from services.shared.core.schemas import ProjectConfig
 from services.shared.core.exceptions import DeploymentError, BuildError
 
@@ -28,6 +28,78 @@ class SQSDeploymentManager:
         
         # Get AWS region from queue URL or environment
         self.aws_region = os.getenv("AWS_REGION", "us-east-1")
+    
+    def _generate_dockerfile(self, config: ProjectConfig) -> str:
+        """Generate Dockerfile based on project type and configuration."""
+        if config.type == ProjectType.NODEJS:
+            return f"""FROM node:18-alpine
+
+WORKDIR {config.install_path}
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies
+RUN npm ci --only=production
+
+# Copy source code
+COPY . .
+
+# Build if build command exists
+RUN {config.build_command or 'echo "No build step"'}
+
+# Expose port
+EXPOSE {config.port}
+
+# Start the application
+CMD {config.start_command}
+"""
+        elif config.type == ProjectType.PYTHON:
+            return f"""FROM python:3.11-slim
+
+WORKDIR {config.install_path}
+
+# Copy requirements
+COPY requirements.txt ./
+
+# Install dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy source code
+COPY . .
+
+# Expose port
+EXPOSE {config.port}
+
+# Start the application
+CMD {config.start_command}
+"""
+        elif config.type == ProjectType.STATIC:
+            return f"""FROM nginx:alpine
+
+# Copy static files
+COPY . /usr/share/nginx/html
+
+# Expose port
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]
+"""
+        else:
+            # Generic Dockerfile
+            return f"""FROM ubuntu:22.04
+
+WORKDIR {config.install_path}
+
+# Copy all files
+COPY . .
+
+# Expose port
+EXPOSE {config.port}
+
+# Start command
+CMD {config.start_command or 'bash'}
+"""
         
         # Initialize SQS client
         self.sqs_client = boto3.client('sqs', region_name=self.aws_region)
@@ -105,6 +177,11 @@ class SQSDeploymentManager:
                 if dockerfile_path.exists():
                     with open(dockerfile_path, 'r') as f:
                         dockerfile_content = f.read()
+                    print("📄 Using existing Dockerfile from project")
+                else:
+                    # Auto-generate Dockerfile based on detected project type
+                    dockerfile_content = self._generate_dockerfile(config)
+                    print(f"🔧 Auto-generated Dockerfile for {config.type} project")
                 
                 # Prepare deployment job message
                 job_message = {
