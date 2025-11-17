@@ -95,10 +95,12 @@ jobs:
           echo "   Checking SSM readiness..."
           SSM_READY=false
           for i in {1..30}; do
-            if aws ssm describe-instance-information \
-              --filters "Key=InstanceIds,Values=$INSTANCE_ID" \
+            PING_STATUS=$(aws ssm describe-instance-information \
+              --instance-information-filter-list "key=InstanceIds,valueSet=$INSTANCE_ID" \
               --query 'InstanceInformationList[0].PingStatus' \
-              --output text 2>/dev/null | grep -q "Online"; then
+              --output text 2>/dev/null || echo "")
+            
+            if [ "$PING_STATUS" = "Online" ]; then
               SSM_READY=true
               echo "   ✅ Instance is ready for SSM commands"
               break
