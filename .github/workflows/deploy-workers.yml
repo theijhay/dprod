@@ -120,17 +120,18 @@ jobs:
               'set -e',
               'cd /opt/dprod-worker',
               'echo \"📥 Downloading worker code...\"',
-              'aws s3 cp s3://$BUCKET_NAME/worker-code.tar.gz /tmp/',
+              'aws s3 cp s3://$BUCKET_NAME/worker-code.tar.gz /tmp/worker-code.tar.gz',
               'echo \"📦 Extracting worker code...\"',
-              'sudo tar -xzf /tmp/worker-code.tar.gz',
+              'tar -xzf /tmp/worker-code.tar.gz -C /opt/dprod-worker',
               'echo \"📚 Installing dependencies...\"',
-              'sudo python3.11 -m pip install -r services/worker/requirements.txt --quiet',
+              'python3.11 -m pip install -r /opt/dprod-worker/services/worker/requirements.txt --quiet',
               'echo \"🔄 Restarting worker service...\"',
-              'sudo systemctl daemon-reload',
-              'sudo systemctl restart dprod-worker || true',
+              'systemctl daemon-reload',
+              'systemctl enable dprod-worker',
+              'systemctl restart dprod-worker',
               'sleep 2',
               'echo \"✅ Deployment complete!\"',
-              'sudo systemctl status dprod-worker --no-pager'
+              'systemctl status dprod-worker --no-pager || true'
             ]" \
             --region ${{ env.AWS_REGION }} \
             --query 'Command.CommandId' \
