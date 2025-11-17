@@ -3,7 +3,7 @@ name: Deploy to AWS Fargate
 on:
   push:
     branches:
-      - master
+      - main
   workflow_dispatch:  # Allows manual trigger from GitHub UI
 
 env:
