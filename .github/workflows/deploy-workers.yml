@@ -125,11 +125,14 @@ jobs:
               'tar -xzf /tmp/worker-code.tar.gz -C /opt/dprod-worker',
               'echo \"📚 Installing dependencies...\"',
               'python3.11 -m pip install -r /opt/dprod-worker/services/worker/requirements.txt --quiet',
-              'echo \"🔄 Restarting worker service...\"',
+              'echo \"� Updating systemd service...\"',
+              'sed -i \"s|WorkingDirectory=.*|WorkingDirectory=/opt/dprod-worker/services|\" /etc/systemd/system/dprod-worker.service',
+              'grep -q PYTHONPATH /etc/systemd/system/dprod-worker.service || sed -i \"/WorkingDirectory/a Environment=\\\"PYTHONPATH=/opt/dprod-worker/services\\\"\" /etc/systemd/system/dprod-worker.service',
+              'echo \"�🔄 Restarting worker service...\"',
               'systemctl daemon-reload',
               'systemctl enable dprod-worker',
               'systemctl restart dprod-worker',
-              'sleep 2',
+              'sleep 3',
               'echo \"✅ Deployment complete!\"',
               'systemctl status dprod-worker --no-pager || true'
             ]" \
