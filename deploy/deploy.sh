@@ -119,6 +119,7 @@ TASK_DEF=$(cat <<EOF
         {"name": "DATABASE_URL", "valueFrom": "arn:aws:ssm:$AWS_REGION:$AWS_ACCOUNT_ID:parameter/dprod/$ENVIRONMENT/DATABASE_URL"},
         {"name": "REDIS_URL", "valueFrom": "arn:aws:ssm:$AWS_REGION:$AWS_ACCOUNT_ID:parameter/dprod/$ENVIRONMENT/REDIS_URL"},
         {"name": "SECRET_KEY", "valueFrom": "arn:aws:ssm:$AWS_REGION:$AWS_ACCOUNT_ID:parameter/dprod/$ENVIRONMENT/SECRET_KEY"},
+        {"name": "SQS_QUEUE_URL", "valueFrom": "arn:aws:ssm:$AWS_REGION:$AWS_ACCOUNT_ID:parameter/dprod/$ENVIRONMENT/SQS_QUEUE_URL"},
         {"name": "AI_ENABLED", "valueFrom": "arn:aws:ssm:$AWS_REGION:$AWS_ACCOUNT_ID:parameter/dprod/$ENVIRONMENT/AI_ENABLED"},
         {"name": "DEBUG", "valueFrom": "arn:aws:ssm:$AWS_REGION:$AWS_ACCOUNT_ID:parameter/dprod/$ENVIRONMENT/DEBUG"},
         {"name": "LLM_PROVIDER", "valueFrom": "arn:aws:ssm:$AWS_REGION:$AWS_ACCOUNT_ID:parameter/dprod/$ENVIRONMENT/LLM_PROVIDER"},
