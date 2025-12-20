@@ -3,7 +3,7 @@ name: Deploy Workers
 on:
   push:
     branches:
-      - main
+      - 
     paths:
       - 'services/worker/**'
       - 'services/shared/**'
