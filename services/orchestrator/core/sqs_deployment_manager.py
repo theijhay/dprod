@@ -28,6 +28,11 @@ class SQSDeploymentManager:
         
         # Get AWS region from queue URL or environment
         self.aws_region = os.getenv("AWS_REGION", "us-east-1")
+        
+        # Initialize SQS client
+        self.sqs_client = boto3.client('sqs', region_name=self.aws_region)
+        
+        print(f"📥 SQS Deployment Manager initialized: {self.sqs_queue_url}")
     
     def _generate_dockerfile(self, config: ProjectConfig) -> str:
         """Generate Dockerfile based on project type and configuration."""
@@ -100,11 +105,6 @@ EXPOSE {config.port}
 # Start command
 CMD {config.start_command or 'bash'}
 """
-        
-        # Initialize SQS client
-        self.sqs_client = boto3.client('sqs', region_name=self.aws_region)
-        
-        print(f"📥 SQS Deployment Manager initialized: {self.sqs_queue_url}")
     
     async def deploy_project(
         self,
